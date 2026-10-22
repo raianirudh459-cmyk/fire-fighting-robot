@@ -1,1 +1,487 @@
+/***************************************************************************
+  FlameGuard - ESP8266 firefighting robot
+  Board   : NodeMCU 1.0 (ESP-12E) or any ESP8266 dev board
+  Features: SoftAP dashboard (192.168.4.1), Autonomous + Manual modes,
+            3 flame sensors, DHT temp/humidity, MQ-135 air quality,
+            relay-driven water pump, motor + pump failsafes.
 
+  Libraries (Arduino Library Manager):
+    - "DHT sensor library"  by Adafruit
+    - "Adafruit Unified Sensor" by Adafruit
+  Board package: "esp8266" by ESP8266 Community (Boards Manager)
+  ESP8266WiFi / ESP8266WebServer / EEPROM come with the board package.
+***************************************************************************/
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <EEPROM.h>
+#include <DHT.h>
+
+#ifndef PWMRANGE
+#define PWMRANGE 1023
+#endif
+
+// ============================ USER SETTINGS ============================
+// --- Wi-Fi access point ---
+const char*   AP_SSID        = "FlameGuard-Robot";
+const char*   AP_PASS        = "firefight123";   // 8+ characters, else AP is open
+const uint8_t AP_CHANNEL     = 6;
+const uint8_t AP_MAX_CLIENTS = 4;
+
+// --- Pins (GPIO numbers; NodeMCU label in comment) ---
+const uint8_t PIN_IN1     = 5;   // D1  left  motors  (L298N IN1)
+const uint8_t PIN_IN2     = 4;   // D2  left  motors  (L298N IN2)
+const uint8_t PIN_IN3     = 14;  // D5  right motors  (L298N IN3)
+const uint8_t PIN_IN4     = 12;  // D6  right motors  (L298N IN4)
+const uint8_t PIN_DHT     = 13;  // D7  DHT data
+const uint8_t PIN_RELAY   = 15;  // D8  pump relay (must be LOW at boot -> use active-HIGH relay)
+const uint8_t PIN_FLAME_L = 16;  // D0  left flame sensor  (DO pin)
+const uint8_t PIN_FLAME_C = 0;   // D3  centre flame sensor (DO pin)
+const uint8_t PIN_FLAME_R = 2;   // D4  right flame sensor (DO pin)
+// MQ-135 analog output -> A0 (through a 5V->3.3V divider, see wiring table)
+
+// --- Motors ---
+const bool    LEFT_REVERSED   = false;  // flip if the left side drives backwards
+const bool    RIGHT_REVERSED  = false;  // flip if the right side drives backwards
+const uint8_t DRIVE_SPEED_PCT = 80;     // forward / backward speed
+const uint8_t TURN_SPEED_PCT  = 70;     // pivot-turn speed
+
+// --- Flame sensors / firefighting ---
+const bool     FLAME_ACTIVE_LOW    = true;   // LM393 modules: DO goes LOW on flame
+const uint8_t  FLAME_RANGE_SENSORS = 2;      // centre + this many sensors = "close enough to spray"
+const uint32_t FLAME_DEBOUNCE_MS   = 60;
+const bool     RELAY_ACTIVE_LOW    = false;  // false = relay ON when GPIO is HIGH
+const uint32_t PUMP_LINGER_MS      = 2500;   // keep spraying after flame disappears
+const uint32_t PUMP_MAX_ON_MS      = 20000;  // dry-run protection: max continuous spray
+const uint32_t PUMP_COOLDOWN_MS    = 5000;   // pause after hitting the max
+const bool     SEARCH_ENABLED      = false;  // true = rotate in short pulses when no flame seen
+const uint32_t SEARCH_PULSE_MS     = 350;
+const uint32_t SEARCH_PERIOD_MS    = 1800;
+
+// --- Manual mode failsafe ---
+const uint32_t MANUAL_TIMEOUT_MS = 600;      // no command for this long -> stop motors + pump
+const bool     BOOT_AUTONOMOUS   = false;    // false = start in manual (safe) mode
+
+// --- DHT ---
+#define DHTTYPE DHT11                        // change to DHT22 if you have one
+const uint32_t DHT_PERIOD_MS = 2500;
+const uint32_t DHT_STALE_MS  = 10000;        // reading older than this = "unavailable"
+
+// --- MQ-135 (raw ADC, 0-1023) ---
+const uint32_t GAS_PERIOD_MS        = 500;
+const uint8_t  GAS_SAMPLES          = 8;
+const uint32_t GAS_WARMUP_MS        = 180000UL;  // readings unreliable until warmed up
+const int      GAS_BASELINE_DEFAULT = 150;       // used until you calibrate in clean air
+const int      GAS_MODERATE_DELTA   = 80;        // raw counts above baseline
+const int      GAS_POOR_DELTA       = 200;
+const int      GAS_HAZARD_DELTA     = 400;
+// ======================================================================
+
+enum Mode : uint8_t { MODE_MANUAL, MODE_AUTO };
+enum Motion : char { M_STOP = 'S', M_FWD = 'F', M_BACK = 'B', M_LEFT = 'L', M_RIGHT = 'R' };
+
+ESP8266WebServer server(80);
+DHT dht(PIN_DHT, DHTTYPE);
+
+Mode     mode = MODE_MANUAL;
+Motion   motion = M_STOP;
+uint32_t lastCmdMs = 0;
+uint32_t failsafeTrips = 0;
+
+// ---- pump state
+bool     pumpWanted = false, pumpOn = false, pumpCooling = false;
+uint32_t pumpOnSince = 0, pumpCooldownUntil = 0;
+
+// ---- flame state
+struct Flame { uint8_t pin; bool raw; bool stable; uint32_t changed; };
+Flame fl[3] = { {PIN_FLAME_L, false, false, 0}, {PIN_FLAME_C, false, false, 0}, {PIN_FLAME_R, false, false, 0} };
+uint32_t lastInRangeMs = 0, searchStart = 0;
+
+// ---- DHT state
+float    tC = NAN, hP = NAN;
+uint32_t dhtLastOk = 0;
+bool     dhtEver = false;
+
+// ---- MQ-135 state
+uint16_t gasRaw = 0;
+bool     gasOk = false, gasSat = false, gasCal = false;
+int      gasBaseline = GAS_BASELINE_DEFAULT;
+
+// =========================== MOTORS ===========================
+static int pct2pwm(uint8_t p) { return (int)((uint32_t)p * PWMRANGE / 100); }
+
+// speed > 0 : A pin PWM, B low.  speed < 0 : reverse.  0 : coast.
+static void driveSide(uint8_t pinA, uint8_t pinB, int speed, bool reversed) {
+  if (reversed) speed = -speed;
+  if (speed > 0)      { analogWrite(pinB, 0); analogWrite(pinA, speed); }
+  else if (speed < 0) { analogWrite(pinA, 0); analogWrite(pinB, -speed); }
+  else                { analogWrite(pinA, 0); analogWrite(pinB, 0); }
+}
+
+void setMotion(Motion m) {
+  if (m == motion) return;
+  int d = pct2pwm(DRIVE_SPEED_PCT), t = pct2pwm(TURN_SPEED_PCT), l = 0, r = 0;
+  switch (m) {
+    case M_FWD:   l = d;  r = d;  break;
+    case M_BACK:  l = -d; r = -d; break;
+    case M_LEFT:  l = -t; r = t;  break;
+    case M_RIGHT: l = t;  r = -t; break;
+    default:      m = M_STOP;     break;
+  }
+  driveSide(PIN_IN1, PIN_IN2, l, LEFT_REVERSED);
+  driveSide(PIN_IN3, PIN_IN4, r, RIGHT_REVERSED);
+  motion = m;
+}
+
+// =========================== PUMP ===========================
+static void relayWrite(bool on) { digitalWrite(PIN_RELAY, (on != RELAY_ACTIVE_LOW) ? HIGH : LOW); }
+
+// Applies pumpWanted with dry-run protection. Call every loop.
+void pumpUpdate(uint32_t now) {
+  if (pumpOn) {
+    if (!pumpWanted) {
+      pumpOn = false; relayWrite(false);
+    } else if (now - pumpOnSince >= PUMP_MAX_ON_MS) {
+      pumpOn = false; relayWrite(false);
+      pumpCooling = true; pumpCooldownUntil = now + PUMP_COOLDOWN_MS;
+    }
+  } else {
+    if (pumpCooling && (int32_t)(now - pumpCooldownUntil) >= 0) pumpCooling = false;
+    if (pumpWanted && !pumpCooling) { pumpOn = true; pumpOnSince = now; relayWrite(true); }
+  }
+}
+
+// =========================== SENSORS ===========================
+void flameUpdate(uint32_t now) {
+  for (uint8_t i = 0; i < 3; i++) {
+    bool a = (digitalRead(fl[i].pin) == (FLAME_ACTIVE_LOW ? LOW : HIGH));
+    if (a != fl[i].raw) { fl[i].raw = a; fl[i].changed = now; }
+    if (fl[i].stable != fl[i].raw && now - fl[i].changed >= FLAME_DEBOUNCE_MS) fl[i].stable = fl[i].raw;
+  }
+}
+
+void dhtUpdate(uint32_t now) {
+  static uint32_t last = 0;
+  if (now - last < DHT_PERIOD_MS) return;
+  last = now;
+  float h = dht.readHumidity(), t = dht.readTemperature();
+  if (isnan(h) || isnan(t) || h < 0 || h > 100 || t < -40 || t > 80) return;  // keep old value; goes stale
+  tC = t; hP = h; dhtLastOk = now; dhtEver = true;
+}
+bool dhtOk(uint32_t now) { return dhtEver && (now - dhtLastOk < DHT_STALE_MS); }
+
+void gasUpdate(uint32_t now) {
+  static uint32_t last = 0;
+  if (now - last < GAS_PERIOD_MS) return;
+  last = now;
+  uint32_t s = 0;
+  for (uint8_t i = 0; i < GAS_SAMPLES; i++) { s += analogRead(A0); delayMicroseconds(200); }
+  gasRaw = s / GAS_SAMPLES;
+  gasOk  = gasRaw > 3;        // ~0 = sensor unpowered / wire missing
+  gasSat = gasRaw >= 1020;    // pinned at full scale = divider/wiring problem
+}
+int gasLevel() {
+  int d = (int)gasRaw - gasBaseline;
+  if (d < GAS_MODERATE_DELTA) return 0;   // good
+  if (d < GAS_POOR_DELTA)     return 1;   // moderate
+  if (d < GAS_HAZARD_DELTA)   return 2;   // poor
+  return 3;                               // hazardous
+}
+void loadCal() {
+  EEPROM.begin(8);
+  uint16_t magic = 0, b = 0;
+  EEPROM.get(0, magic); EEPROM.get(2, b);
+  if (magic == 0xA55A && b <= 1023) { gasBaseline = b; gasCal = true; }
+}
+void saveCal(uint16_t b) {
+  uint16_t magic = 0xA55A;
+  EEPROM.put(0, magic); EEPROM.put(2, b); EEPROM.commit();
+}
+
+// =========================== CONTROL LOGIC ===========================
+// Safe mode change: everything the old mode was doing is cancelled.
+void setMode(Mode m) {
+  setMotion(M_STOP);
+  pumpWanted = false;
+  pumpUpdate(millis());
+  mode = m;
+  lastCmdMs = 0;
+  lastInRangeMs = 0;
+  searchStart = millis();
+}
+
+void autonomousStep(uint32_t now) {
+  bool l = fl[0].stable, c = fl[1].stable, r = fl[2].stable;
+  uint8_t n = l + c + r;
+  bool inRange = c && n >= FLAME_RANGE_SENSORS;
+  if (inRange) lastInRangeMs = now;
+  bool lingering = pumpOn && (now - lastInRangeMs < PUMP_LINGER_MS);
+  pumpWanted = inRange || lingering;
+
+  if (inRange || lingering)    setMotion(M_STOP);                 // in range: hold still and spray
+  else if (n == 0) {
+    if (SEARCH_ENABLED) setMotion(((now - searchStart) % SEARCH_PERIOD_MS) < SEARCH_PULSE_MS ? M_RIGHT : M_STOP);
+    else                setMotion(M_STOP);
+  }
+  else if (c)                  setMotion(M_FWD);
+  else if (l && !r)            setMotion(M_LEFT);
+  else if (r && !l)            setMotion(M_RIGHT);
+  else                         setMotion(M_FWD);                  // left + right, no centre
+}
+
+void manualFailsafe(uint32_t now) {
+  if (motion == M_STOP && !pumpWanted) return;
+  if (now - lastCmdMs > MANUAL_TIMEOUT_MS || WiFi.softAPgetStationNum() == 0) {
+    setMotion(M_STOP);
+    pumpWanted = false;
+    failsafeTrips++;
+  }
+}
+
+// =========================== WEB UI ===========================
+const char PAGE[] PROGMEM = R"rawliteral(<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>FlameGuard</title><style>
+:root{--ink:#14213d;--bg:#e8ecf0;--line:#c3cbd6;--red:#d62828;--amber:#f2a900;--ok:#1b8a4b;--mut:#5b6678}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.35 "Bahnschrift","DIN Alternate","Roboto Condensed","Arial Narrow",system-ui,sans-serif}
+main{max-width:460px;margin:0 auto;padding:0 12px 28px}
+header{background:var(--ink);color:#fff;margin:0 -12px 12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center}
+h1{font-size:21px;margin:0;letter-spacing:.3px}
+#conn{display:flex;align-items:center;gap:7px;font-weight:700}
+#dot{width:11px;height:11px;border-radius:50%;background:var(--amber)}
+.on #dot,#conn.ok #dot{background:#3ddc84}#conn.bad #dot{background:var(--red)}
+#fire{background:var(--red);color:#fff;font-weight:800;font-size:17px;padding:10px 12px;border-radius:8px;margin-bottom:12px}
+#off{background:#fff;border:2px solid var(--red);color:var(--red);font-weight:700;padding:9px 12px;border-radius:8px;margin-bottom:12px}
+[hidden]{display:none!important}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:2px solid var(--ink);border-radius:8px;overflow:hidden}
+.seg button{padding:13px 6px;background:#fff;color:var(--ink);border:0;font:inherit;font-weight:800;font-size:16px}
+.seg button.on{background:var(--ink);color:#fff}
+.note{color:var(--mut);margin:7px 2px 12px;min-height:20px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:12px}
+.row{display:flex;justify-content:space-between;font-weight:700;margin-bottom:10px}
+.row span:last-child{color:var(--mut)}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);grid-template-areas:". u ." "l c r" ". d .";gap:8px;max-width:270px;margin:0 auto 12px}
+.pad button{aspect-ratio:1;border:2px solid var(--ink);background:#fff;border-radius:10px;display:grid;place-items:center;touch-action:none;user-select:none;-webkit-user-select:none;padding:0}
+.pad button:active{background:var(--ink)}.pad svg{width:34px;height:34px;fill:var(--ink)}.pad button:active svg{fill:#fff}
+.pad [data-d=L] svg{transform:rotate(-90deg)}.pad [data-d=R] svg{transform:rotate(90deg)}.pad [data-d=B] svg{transform:rotate(180deg)}
+#spray{width:100%;padding:13px;border:2px solid var(--ink);border-radius:8px;background:#fff;font:inherit;font-weight:800;font-size:16px;touch-action:none;user-select:none;-webkit-user-select:none}
+#spray:active,#spray.live{background:#2b7bd6;color:#fff;border-color:#2b7bd6}
+body[data-mode=auto] .manual,body.offline .manual{opacity:.35;pointer-events:none}
+#stop{width:100%;height:68px;border:0;border-radius:8px;color:#fff;font:inherit;font-weight:900;font-size:24px;letter-spacing:1px;margin-bottom:14px;background:repeating-linear-gradient(-45deg,#d62828 0 14px,#a31d1d 14px 28px);text-shadow:0 1px 2px rgba(0,0,0,.5)}
+#stop:active{filter:brightness(.8)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.grid .panel{margin:0}
+.lbl{color:var(--mut);font-weight:700}.big{font-size:38px;font-weight:800;line-height:1.1}.big small{font-size:18px;color:var(--mut);margin-left:3px}
+.err{color:var(--red);font-weight:700;font-size:13px;min-height:16px}
+.bar{height:12px;background:#dfe5ec;border-radius:6px;overflow:hidden;margin:10px 0 6px}.bar i{display:block;height:100%;width:0;background:var(--ok);transition:width .4s}
+.lv1 i{background:#9bb21c}.lv2 i{background:var(--amber)}.lv3 i{background:var(--red)}
+.gl{font-size:20px;font-weight:800}.cap{color:var(--mut);font-size:13px}
+.mini{margin-top:10px;padding:8px 12px;border:1px solid var(--ink);border-radius:6px;background:#fff;font:inherit;font-weight:700;color:var(--ink)}
+.fl{display:flex;gap:8px;margin-top:8px}.fl div{flex:1;text-align:center;padding:9px 0;border:2px solid var(--line);border-radius:8px;font-weight:700;color:var(--mut)}
+.fl .hit{background:var(--red);border-color:var(--red);color:#fff}
+#toast{position:fixed;left:50%;bottom:16px;transform:translate(-50%,90px);background:var(--ink);color:#fff;padding:10px 16px;border-radius:8px;font-weight:700;transition:transform .2s;max-width:90%}
+#toast.show{transform:translate(-50%,0)}#toast.bad{background:var(--red)}
+</style></head><body data-mode="manual"><main>
+<header><h1>FlameGuard</h1><div id="conn"><span id="dot"></span><span id="cs">Connecting</span></div></header>
+<div id="off" hidden>Robot not reachable. Check you are on the FlameGuard Wi-Fi. It stops by itself if commands stop.</div>
+<div id="fire" hidden></div>
+<div class="seg"><button id="mA" onclick="setMode('auto')">Autonomous</button><button id="mM" onclick="setMode('manual')">Manual drive</button></div>
+<div class="note" id="mnote"></div>
+<div class="panel">
+<div class="row"><span id="motion">Stopped</span><span id="pumpst">Pump off</span></div>
+<div class="manual"><div class="pad" id="pad">
+<button data-d="F" style="grid-area:u" aria-label="Forward"><svg viewBox="0 0 24 24"><path d="M12 5l8 13H4z"/></svg></button>
+<button data-d="L" style="grid-area:l" aria-label="Left"><svg viewBox="0 0 24 24"><path d="M12 5l8 13H4z"/></svg></button>
+<button data-d="S" style="grid-area:c" aria-label="Stop driving"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></svg></button>
+<button data-d="R" style="grid-area:r" aria-label="Right"><svg viewBox="0 0 24 24"><path d="M12 5l8 13H4z"/></svg></button>
+<button data-d="B" style="grid-area:d" aria-label="Backward"><svg viewBox="0 0 24 24"><path d="M12 5l8 13H4z"/></svg></button>
+</div><button id="spray">Hold to spray water</button></div></div>
+<button id="stop" onclick="estop()">EMERGENCY STOP</button>
+<div class="grid">
+<div class="panel"><div class="lbl">Temperature</div><div class="big"><span id="t">--</span><small>&deg;C</small></div><div class="err" id="te"></div></div>
+<div class="panel"><div class="lbl">Humidity</div><div class="big"><span id="h">--</span><small>%</small></div><div class="err" id="he"></div></div>
+</div>
+<div class="panel" id="air"><div class="lbl">Air quality (MQ-135)</div>
+<div class="gl" id="gl">--</div><div class="bar"><i id="gb"></i></div>
+<div class="cap">Raw ADC reading: <b id="gr">--</b> / 1023 (not ppm)</div><div class="err" id="ge"></div>
+<button class="mini" onclick="cal()">Calibrate in clean air</button></div>
+<div class="panel"><div class="lbl">Flame sensors</div><div class="fl"><div id="f0">Left</div><div id="f1">Centre</div><div id="f2">Right</div></div></div>
+</main><div id="toast"></div>
+<script>
+const $=i=>document.getElementById(i);
+let fails=0,online=false,mode='manual',inflight=false,hold=null,dir='S',sp=null,tt;
+function toast(m,bad){const e=$('toast');e.textContent=m;e.className='show'+(bad?' bad':'');clearTimeout(tt);tt=setTimeout(()=>e.className='',2000)}
+async function call(p){const c=new AbortController(),k=setTimeout(()=>c.abort(),1500);
+try{const r=await fetch(p,{signal:c.signal,cache:'no-store'});const j=await r.json();clearTimeout(k);fails=0;return j}
+catch(e){clearTimeout(k);if(++fails>=2)setOnline(false);return null}}
+function setOnline(b){if(b===online&&$('cs').textContent!='Connecting')return;online=b;
+$('conn').className=b?'ok':'bad';$('cs').textContent=b?'Connected':'Disconnected';
+$('off').hidden=b;document.body.classList.toggle('offline',!b);if(!b)toast('Robot disconnected',1)}
+function send(d,force){if(inflight&&!force)return;inflight=true;
+call('/api/drive?d='+d).then(j=>{inflight=false;if(j&&!j.ok)toast(j.msg,1)})}
+function press(d){if(!online||mode!='manual')return;dir=d;send(d,1);clearInterval(hold);hold=setInterval(()=>send(d),150)}
+function release(){clearInterval(hold);hold=null;if(dir!='S'){dir='S';send('S',1)}}
+function pump(on){return call('/api/pump?s='+(on?1:0)).then(j=>{if(j&&!j.ok)toast(j.msg,1)})}
+function sprayOn(){if(!online||mode!='manual'||sp)return;$('spray').classList.add('live');pump(1);sp=setInterval(()=>pump(1),150)}
+function sprayOff(){if(!sp)return;clearInterval(sp);sp=null;$('spray').classList.remove('live');pump(0)}
+function releaseAll(){release();sprayOff()}
+document.querySelectorAll('[data-d]').forEach(b=>{
+b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);press(b.dataset.d)});
+['pointerup','pointercancel','lostpointercapture'].forEach(v=>b.addEventListener(v,release));
+b.addEventListener('contextmenu',e=>e.preventDefault())});
+const sb=$('spray');
+sb.addEventListener('pointerdown',e=>{e.preventDefault();sb.setPointerCapture(e.pointerId);sprayOn()});
+['pointerup','pointercancel','lostpointercapture'].forEach(v=>sb.addEventListener(v,sprayOff));
+sb.addEventListener('contextmenu',e=>e.preventDefault());
+addEventListener('blur',releaseAll);document.addEventListener('visibilitychange',()=>{if(document.hidden)releaseAll()});
+const km={ArrowUp:'F',w:'F',ArrowDown:'B',s:'B',ArrowLeft:'L',a:'L',ArrowRight:'R',d:'R',' ':'S'};
+addEventListener('keydown',e=>{if(e.key=='Escape'){estop();return}const d=km[e.key];if(!d||e.repeat)return;e.preventDefault();press(d)});
+addEventListener('keyup',e=>{if(km[e.key])release()});
+function setMode(m){call('/api/mode?m='+m).then(j=>{toast(j&&j.ok?(m=='auto'?'Autonomous mode on':'Manual mode on'):(j?j.msg:'No response'),!(j&&j.ok));refresh()})}
+async function estop(){releaseAll();let j=await call('/api/stop');if(!(j&&j.ok))j=await call('/api/stop');
+toast(j&&j.ok?'Stopped. Manual mode.':'Stop not confirmed. Cut robot power!',!(j&&j.ok));refresh()}
+function cal(){if(!confirm('Calibrate now? Sensor must be warm and in clean air.'))return;
+call('/api/calibrate').then(j=>{toast(j?j.msg:'No response',!(j&&j.ok));refresh()})}
+const MN={S:'Stopped',F:'Moving forward',B:'Moving backward',L:'Turning left',R:'Turning right'};
+const GL=['Good','Moderate','Poor','Hazardous'];
+function render(s){mode=s.mode;document.body.dataset.mode=mode;
+$('mA').classList.toggle('on',mode=='auto');$('mM').classList.toggle('on',mode=='manual');
+$('mnote').textContent=mode=='auto'?'Robot finds and extinguishes flames by itself. Drive pad is locked.':'You drive. Robot stops if commands pause for a moment.';
+$('motion').textContent=MN[s.motion]||'Stopped';
+$('pumpst').textContent=s.pump?'Pump on':(s.cool?'Pump cooling down':'Pump off');
+const n=s.flame.filter(x=>x).length,nm=['left','centre','right'];
+$('fire').hidden=!n;if(n)$('fire').textContent='Flame detected: '+nm.filter((x,i)=>s.flame[i]).join(', ');
+[0,1,2].forEach(i=>$('f'+i).classList.toggle('hit',!!s.flame[i]));
+if(s.t===null){$('t').textContent='--';$('h').textContent='--';$('te').textContent=$('he').textContent='No reading. Check DHT wiring.'}
+else{$('t').textContent=s.t.toFixed(1);$('h').textContent=s.h.toFixed(0);$('te').textContent=$('he').textContent=''}
+const g=s.gas,air=$('air');
+if(!g.ok){$('gr').textContent='--';$('gl').textContent='Unavailable';$('gb').style.width='0';$('ge').textContent='No signal. Check MQ-135 power and A0 wiring.';air.className='panel'}
+else{$('gr').textContent=g.raw;$('gb').style.width=(g.raw/10.23)+'%';$('gl').textContent=GL[g.lvl];air.className='panel lv'+g.lvl;
+$('ge').textContent=g.sat?'Reading pinned at maximum. Check the voltage divider.':g.warm>0?'Warming up ('+g.warm+' s left). Readings unreliable.':!g.cal?'Not calibrated. Levels are approximate.':''}}
+async function refresh(){const s=await call('/api/state');if(s){if(!online||$('cs').textContent=='Connecting')setOnline(true);render(s)}return s}
+async function poll(){const s=await refresh();setTimeout(poll,s?1000:1500)}
+poll();
+</script></body></html>)rawliteral";
+
+// =========================== HTTP HANDLERS ===========================
+static void sendJson(int code, const char* body) {
+  server.sendHeader("Cache-Control", "no-store");
+  server.send(code, "application/json", body);
+}
+static void reply(int code, bool ok, const char* msg) {
+  char b[96];
+  snprintf(b, sizeof b, "{\"ok\":%s,\"msg\":\"%s\"}", ok ? "true" : "false", msg);
+  sendJson(code, b);
+}
+
+void handleRoot() { server.send_P(200, "text/html", PAGE); }
+
+void handleState() {
+  uint32_t now = millis();
+  char t[12], h[12], b[420];
+  if (dhtOk(now)) { dtostrf(tC, 1, 1, t); dtostrf(hP, 1, 0, h); }
+  else            { strcpy(t, "null"); strcpy(h, "null"); }
+  unsigned long warm = now < GAS_WARMUP_MS ? (GAS_WARMUP_MS - now) / 1000 + 1 : 0;
+  snprintf(b, sizeof b,
+    "{\"mode\":\"%s\",\"motion\":\"%c\",\"pump\":%d,\"cool\":%d,\"flame\":[%d,%d,%d],"
+    "\"t\":%s,\"h\":%s,"
+    "\"gas\":{\"raw\":%u,\"lvl\":%d,\"ok\":%d,\"sat\":%d,\"cal\":%d,\"warm\":%lu},\"trips\":%lu}",
+    mode == MODE_AUTO ? "auto" : "manual", (char)motion, pumpOn, pumpCooling,
+    fl[0].stable, fl[1].stable, fl[2].stable, t, h,
+    (unsigned)gasRaw, gasLevel(), gasOk, gasSat, gasCal, warm, (unsigned long)failsafeTrips);
+  sendJson(200, b);
+}
+
+void handleDrive() {
+  if (mode != MODE_MANUAL) { reply(409, false, "Switch to manual mode first"); return; }
+  String d = server.arg("d");
+  if (d.length() != 1 || !strchr("FBLRS", d[0])) { reply(400, false, "Bad command"); return; }
+  setMotion((Motion)d[0]);
+  lastCmdMs = millis();
+  reply(200, true, "OK");
+}
+
+void handlePump() {
+  if (mode != MODE_MANUAL) { reply(409, false, "Switch to manual mode first"); return; }
+  String s = server.arg("s");
+  if (s != "0" && s != "1") { reply(400, false, "Bad command"); return; }
+  pumpWanted = (s == "1");
+  lastCmdMs = millis();
+  pumpUpdate(lastCmdMs);
+  reply(200, true, "OK");
+}
+
+void handleMode() {
+  String m = server.arg("m");
+  if (m != "auto" && m != "manual") { reply(400, false, "Bad mode"); return; }
+  setMode(m == "auto" ? MODE_AUTO : MODE_MANUAL);
+  reply(200, true, "OK");
+}
+
+void handleStop() {            // works in any mode, always lands in idle manual mode
+  setMode(MODE_MANUAL);
+  reply(200, true, "Stopped");
+}
+
+void handleCalibrate() {
+  if (millis() < GAS_WARMUP_MS) { reply(409, false, "Sensor still warming up"); return; }
+  if (!gasOk)                   { reply(409, false, "MQ-135 not reading"); return; }
+  uint32_t s = 0;
+  for (uint8_t i = 0; i < 32; i++) { s += analogRead(A0); delay(5); }
+  gasBaseline = s / 32; gasCal = true;
+  saveCal(gasBaseline);
+  reply(200, true, "Clean-air baseline saved");
+}
+
+void handleNotFound() {
+  if (server.uri() == "/favicon.ico") { server.send(204); return; }
+  server.sendHeader("Location", "http://192.168.4.1/");
+  server.send(302, "text/plain", "");
+}
+
+// =========================== SETUP / LOOP ===========================
+void setup() {
+  // Outputs to a safe state first
+  pinMode(PIN_RELAY, OUTPUT); relayWrite(false);
+  pinMode(PIN_IN1, OUTPUT); pinMode(PIN_IN2, OUTPUT);
+  pinMode(PIN_IN3, OUTPUT); pinMode(PIN_IN4, OUTPUT);
+  analogWriteRange(PWMRANGE);
+  digitalWrite(PIN_IN1, LOW); digitalWrite(PIN_IN2, LOW);
+  digitalWrite(PIN_IN3, LOW); digitalWrite(PIN_IN4, LOW);
+  pinMode(PIN_FLAME_L, INPUT); pinMode(PIN_FLAME_C, INPUT); pinMode(PIN_FLAME_R, INPUT);
+
+  Serial.begin(115200);
+  dht.begin();
+  loadCal();
+
+  WiFi.persistent(false);
+  WiFi.mode(WIFI_AP);
+  IPAddress ip(192, 168, 4, 1);
+  WiFi.softAPConfig(ip, ip, IPAddress(255, 255, 255, 0));
+  if (strlen(AP_PASS) >= 8) WiFi.softAP(AP_SSID, AP_PASS, AP_CHANNEL, false, AP_MAX_CLIENTS);
+  else { WiFi.softAP(AP_SSID, (const char*)nullptr, AP_CHANNEL, false, AP_MAX_CLIENTS); Serial.println("WARNING: AP_PASS < 8 chars, AP is OPEN"); }
+
+  server.on("/", HTTP_GET, handleRoot);
+  server.on("/api/state", HTTP_GET, handleState);
+  server.on("/api/drive", HTTP_GET, handleDrive);
+  server.on("/api/pump", HTTP_GET, handlePump);
+  server.on("/api/mode", HTTP_GET, handleMode);
+  server.on("/api/stop", HTTP_GET, handleStop);
+  server.on("/api/calibrate", HTTP_GET, handleCalibrate);
+  server.onNotFound(handleNotFound);
+  server.begin();
+
+  setMode(BOOT_AUTONOMOUS ? MODE_AUTO : MODE_MANUAL);
+  Serial.print("FlameGuard ready: join '"); Serial.print(AP_SSID); Serial.println("' then open http://192.168.4.1");
+}
+
+void loop() {
+  uint32_t now = millis();
+  server.handleClient();
+  flameUpdate(now);
+  gasUpdate(now);
+  dhtUpdate(now);
+  if (mode == MODE_AUTO) autonomousStep(now);
+  else                   manualFailsafe(now);
+  pumpUpdate(now);
+}
