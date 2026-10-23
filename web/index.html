@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f3127">
+  <meta name="description" content="VANARAKSHAK 2.0 simulated mobile robot dashboard.">
+  <title>VANARAKSHAK 2.0 | Rover Console (Simulator)</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="logo" aria-hidden="true">🌿</span><div><p class="eyebrow">Forest protection · school prototype</p><h1>VANARAKSHAK <span>2.0</span></h1></div></div>
+    <div class="status"><span class="dot" aria-hidden="true"></span><strong>SIMULATOR ONLY</strong><small>Not connected to a real robot</small></div>
+  </header>
+  <main>
+    <section class="intro"><div><p class="eyebrow">Rover control centre</p><h2>Protect the forest. Understand the data.</h2><p>Responsive preview for your team's 4WD demonstration rover. All values and driving actions below are <strong>simulated</strong>.</p></div><button type="button" id="stop" class="stop">■ STOP <span class="key-hint">[Space]</span></button></section>
+    <section class="stats" aria-label="Environmental sensors">
+      <article class="card metric"><h3>🌡 Temperature <span class="pill">DHT11</span></h3><p class="value"><span id="temp">27</span><small>°C</small></p><p class="foot">Simulated · last update <span class="updated">just now</span></p></article>
+      <article class="card metric"><h3>💧 Humidity <span class="pill">DHT11</span></h3><p class="value"><span id="humidity">52</span><small>% RH</small></p><p class="foot">Simulated · last update <span class="updated">just now</span></p></article>
+      <article class="card metric"><h3>🌫 Gas sensor <span class="pill">MQ135</span></h3><p class="value"><span id="mq">411</span><small>raw</small></p><p class="foot">Simulated · uncalibrated; not smoke ppm</p></article>
+      <article class="card metric"><h3>📡 Front distance <span class="pill">Ultrasonic</span></h3><p class="value"><span id="distance">48</span><small>cm</small></p><p class="foot">Simulated · indoor obstacle example</p></article>
+    </section>
+    <section class="panel-grid">
+      <article class="card control-card"><div class="section-title"><div><p class="eyebrow">Driving</p><h3>Movement controller</h3></div><span class="pill" id="modeBadge">IDLE</span></div>
+        <div class="mode-group" role="group" aria-label="Simulated driving mode"><button type="button" class="mode selected" data-mode="idle" aria-pressed="true">Idle</button><button type="button" class="mode" data-mode="manual" aria-pressed="false">Manual</button><button type="button" class="mode" data-mode="auto" aria-pressed="false">Auto demo</button></div>
+        <p class="help">Manual: hold a button to simulate motion. Release to stop. Auto: simulated indoor demonstration only.</p>
+        <div class="dpad" role="group" aria-label="Manual movement controls"><button type="button" class="move forward" data-direction="forward" aria-label="Forward">▲</button><button type="button" class="move left" data-direction="left" aria-label="Left">◀</button><button type="button" class="move right" data-direction="right" aria-label="Right">▶</button><button type="button" class="move backward" data-direction="backward" aria-label="Backward">▼</button><button type="button" class="dpad-stop" id="padStop" aria-label="Stop motion">■</button></div>
+        <label class="speed-label" for="speed">Simulated speed request <output id="speedDisplay" for="speed">25%</output></label><input id="speed" type="range" min="10" max="40" value="25" step="5">
+        <div id="movement" class="movement" role="status" aria-live="polite">Motors: STOPPED (simulated)</div>
+      </article>
+      <article class="card camera"><div class="section-title"><div><p class="eyebrow">Vision</p><h3>Camera preview</h3></div><span class="pill">UNAVAILABLE</span></div><div class="camera-screen"><div aria-hidden="true" class="camera-icon">▣</div><strong>Camera not configured</strong><p>Confirm the exact “ESP8266 Cam” model with Saksham. A verified local stream can be added later.</p></div><p class="foot">No camera feed is recorded or uploaded by this interface.</p></article>
+      <article class="card events"><div class="section-title"><div><p class="eyebrow">System</p><h3>Robot status</h3></div><span class="pill warning">MOCK DATA</span></div><dl class="details"><div><dt>Connection</dt><dd>Simulator (offline from robot)</dd></div><div><dt>Flame alert</dt><dd>None (simulated)</dd></div><div><dt>Obstacle</dt><dd id="obstacle">Clear (simulated)</dd></div><div><dt>Pump</dt><dd>Disabled / not connected</dd></div><div><dt>Firmware API</dt><dd>Not connected</dd></div><div><dt>Live camera</dt><dd>Hardware unverified</dd></div></dl><p class="foot">No live driving, autonomous navigation, or pump commands are sent.</p></article>
+      <article class="card"><div class="section-title"><div><p class="eyebrow">Project</p><h3>What each teammate owns</h3></div></div><div class="team"><div><strong>Your role</strong><p>Web dashboard, mobile responsiveness, interface and future API integration.</p></div><div><strong>Saksham's role</strong><p>Motor and sensor firmware, autonomous navigation, Wi-Fi endpoints and on-device stop safeguards.</p></div></div><p class="foot">Read the integration contract in <code>docs/14_API_CONTRACT.md</code>.</p></article>
+    </section>
+    <p class="disclaimer">Educational simulator — not an emergency-control system. Never test with real fire or smoke; only use the physical rover in an adult-supervised safe indoor environment.</p>
+  </main>
+</body>
+</html>
