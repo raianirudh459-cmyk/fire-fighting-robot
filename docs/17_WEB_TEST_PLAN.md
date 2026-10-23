@@ -51,3 +51,6 @@ Use the proposed JSON fixtures in docs/14, changing only when Saksham and you ag
 - [ ] Camera stream is verified and kept private/local.
 - [ ] Connection loss triggers an on-device motor-stop watchdog.
 - [ ] Real relay/pump default remains OFF.
+
+## V2 software verification record
+Controller tests and exact verification limits are in [docs/18](18_WEB_IMPLEMENTATION.md). Run `node --test web/tests/controller.test.cjs`; browser layout and hardware acceptance items above remain unchecked until observed. Use the simulator scenario selector for stale/offline/fault/rejection journeys.

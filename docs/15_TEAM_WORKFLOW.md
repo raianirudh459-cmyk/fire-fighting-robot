@@ -37,3 +37,6 @@
 - Include tests and exact results with commits.
 - Keep passwords, access tokens, credentials, and sensitive network details out of committed files.
 - Schedule live-demo integration only after adult reviews power and movement hazards.
+
+## Dashboard v2 implementation handoff
+See [implementation and verification](18_WEB_IMPLEMENTATION.md) and `web/api.d.ts`. The mock adapter consumes v1 telemetry and correlated command acknowledgments. Live networking remains disabled pending Saksham's endpoint, origin/authentication and watchdog evidence. The user owns mobile/browser review; Saksham owns firmware validation; adult approval owns power and optional water integration. No changes to legacy firmware are included.

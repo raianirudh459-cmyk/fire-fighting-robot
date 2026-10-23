@@ -116,3 +116,8 @@ Keep `supported:false` until actual board marking and stream verified. If a loca
 - [ ] Command ack, fault and STOP behavior tested.
 - [ ] Camera URL/protocol verified independently.
 - [ ] Auth/origin and LAN restrictions verified.
+
+## Browser adapter notes (proposed; review with Saksham)
+`web/api.d.ts` mirrors these v1 payloads; `web/robot.js` provides simulator commands and telemetry. The HTTP adapter intentionally throws until integrated and independently tested. No endpoint or field agreement is claimed.
+
+Before live implementation, agree how a STOP invalidates older in-flight commands at the server, how sessions and sequences reset across reboot, and how AUTO stops on essential sensor loss/physical STOP. A correlated acknowledgment is necessary but cannot by itself guarantee execution ordering. HTTP retries/backoff must apply only to telemetry/health discovery, never queued movements or automatic mode restoration. Device timestamps must share an uptime clock to compute sample age accurately.

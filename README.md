@@ -84,3 +84,5 @@ Open `web/index.html` locally for a **simulated preview**. Live motor or pump co
 5. Safely protected assembled battery supply and physical OFF switch.
 
 **No physical hardware tests or live network integration have been claimed.**
+
+Dashboard controller, simulator scenarios, Node tests and integration limitations: [implementation record](docs/18_WEB_IMPLEMENTATION.md). No dependency installation or build is required; run `node --test web/tests/controller.test.cjs`.
