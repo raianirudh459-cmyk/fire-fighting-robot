@@ -1,44 +1,33 @@
-# Agent instructions — VANARAKSHAK 2.0
+# VANARAKSHAK agent and contributor instructions
 
-## Goal and ownership
-This is a collaborative **school science-fair robot**. **The web application belongs to the user; robot firmware, autonomy, sensor integration and electrical design belong to teammate Saksham.** Follow the assignment in `CODEX_STARTER_PROMPT.md` and docs/13–17. Prioritize a robust **mobile-first web interface** rather than writing speculative hardware-specific firmware.
+## Frontend stack is fixed
+Use only **HTML, CSS, and vanilla browser JavaScript** for the web dashboard. No React, TypeScript, Vite, Node.js, npm, CDNs or package manager/build system unless the user later explicitly changes this decision. Run `web/index.html` and `web/tests.html` directly in a browser. The tool-free design should be documented in `web/README.md`.
 
-## Mandatory engineering constraints
-- Never claim the rover is safe for or capable of actual forest-fire suppression or emergency detection.
-- No flames, smoke, heat testing, real-fire trials, or autonomous outdoor movement. Demonstrate with safe simulated flags and indoor obstacles.
-- Treat camera PCB identity ("ESP8266 Cam") as unresolved; do not invent a stream endpoint or claim it is ESP32-CAM until checked.
-- MQ135 must not be shown as accurate smoke ppm/CO₂ without proper sensing/calibration and explicit provenance. Prefer `mq135Raw` + relative air-quality index / "uncalibrated" label.
-- DHT11 temperature and humidity readings must always have timestamps and stale/missing state.
-- Never infer exact pin mappings, battery wiring, module ratings or voltage compatibility from names alone.
-- Lithium-ion battery system must use an assembled, protected, adult-verified commercial supply; no cell-assembly, battery-pack construction or charging guidance.
-- Real pump/relay action defaults **disabled** in firmware and UI until independently reviewed for water/electronics separation.
-- Robot must have **on-device** command timeout/watchdog and collision stops. Browser-side safety controls are defense in depth, not substitutes.
-- No public port-forwarding, unauthenticated internet deployment, or hard-coded passwords/tokens.
+## Ownership and scope
+**User:** UI, mobile UX, sensor dashboard, state, transport integration and frontend verification.
+**Saksham:** rover firmware and onboard control, motor drivers, environmental sensors, autonomy, on-device watchdog, network endpoint, actual camera board identification and power/electrical design.
+Preserve all other people's code; do not silently alter hardware firmware or earlier Arduino Uno legacy prototype. The old `src/`, `include/`, `platformio.ini`, and `test/fire_logic_test.cpp` are **not 4WD firmware**.
 
-## Source and preservation
-- `web/` is the new front-end. A self-contained mock demo is encouraged; visibly mark all telemetry SIMULATED and prevent confusing it with real hardware.
-- `docs/14_API_CONTRACT.md` governs live commands/telemetry. Coordinate any API changes with Saksham. Be explicit about version negotiation, unavailable fields, failure states and stop semantics.
-- `firmware/` is reserved for code authored/approved by Saksham after exact controller identification.
-- `src/`, `include/`, `platformio.ini`, `test/` are **legacy stationary Arduino Uno demonstration**, NOT verified 4WD rover firmware; don't promote or erase them.
-- Never delete the prior ESP8266 placeholder, LICENSE, Git history or unrelated user content.
+## Frontend structure
+- `web/index.html`: markup
+- `web/styles.css`: responsive styling
+- `web/state.js`: pure state and fixtures; keep easy to test
+- `web/app.js`: DOM and event handling
+- `web/tests.html`, `web/tests.js`: no-dependency browser logic tests
+- `web/README.md`: setup and capabilities
+- `docs/13_WEB_DASHBOARD.md` and `docs/14_API_CONTRACT.md`: UI/API agreements
 
-## UI priorities
-1. Accurate responsive mobile layout, high-contrast accessible buttons, readable tap targets.
-2. Connection badge + telemetry freshness + last-updated time.
-3. DHT11 temperature (°C), humidity (%RH), MQ135 raw/relative air-quality display; no fabricated precision.
-4. Optional camera viewer with unavailable state.
-5. IDLE / MANUAL / AUTO clearly differentiated; show mode acknowledgment from firmware rather than optimistic changes.
-6. Directional press-and-hold controls; STOP on pointerup/cancel, blur, page hide, disconnect; persistent physical stop remains firmware responsibility.
-7. Prominent STOP command; all controls disabled in offline or stale/fault conditions.
-8. No "pump ON" control in live mode until explicit capability and reviewed authorization.
-9. Responsive tests at 320px, 390px, 768px, 1280px widths.
-10. Keyboard access, visible focus styles, reduced-motion consideration and safe handling of touch events.
+## Safety and truthfulness
+- Simulator is explicitly labeled. Do not present fake telemetry as real.
+- MQ135 is not a precise smoke-ppm or standard AQI reading without proper calibration.
+- Actual camera board ("ESP8266 Cam") remains unconfirmed.
+- No open flame, smoke, heaters or real fire tests.
+- No public internet motor-control interface or hardcoded secrets.
+- Web STOP and direction-release are supplementary; the physical robot firmware must stop its motors autonomously on stale commands/fault and support physical switch OFF.
+- Pump disabled until teacher/adult reviews the wet setup.
+- No DIY lithium-ion batteries, pack construction or charging instructions.
+- No unattended/outdoor autonomous testing; controlled indoor demo only.
+- Missing sensor data must be represented as unavailable and state handling cannot restart motion after reconnection.
 
-## Work and GitHub
-- Read repository content and docs before coding. Avoid unnecessary packages/complex frameworks.
-- Code in a feature branch. Do not merge into `main` without human review.
-- Do not modify firmware-owned files unless Saksham explicitly agrees on the new contract.
-- Maintain a mock backend so development and testing don't require an active robot.
-- Run actual lint/tests/build where tools exist; never fabricate passes or real sensor measurements.
-- Update docs/15_TEAM_WORKFLOW.md with handoff contracts, not private tokens or passwords.
-- Clearly enumerate known unknowns before deployment.
+## Git workflow and verification
+Commit only relevant frontend/docs changes on an isolated feature branch. Maintain a reviewable PR. Run real tests and describe actual results, never claim unrun hardware or browser tests. Ensure modified JS remains valid classic browser JavaScript (no imports/modules required). Do not self-merge without approval.
