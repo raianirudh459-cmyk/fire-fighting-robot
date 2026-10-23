@@ -1,104 +1,64 @@
-"use strict";
-// SIMULATOR ONLY. No networking or real motor/pump signals in this file.
-// The real contract is documented in docs/14_API_CONTRACT.md and requires Saksham's firmware.
+'use strict';
 (() => {
-  const $ = (id) => document.getElementById(id);
-  const modeButtons = Array.from(document.querySelectorAll("[data-mode]"));
-  const moveButtons = Array.from(document.querySelectorAll("[data-direction]"));
-  let mode = "idle";
-  let motion = "stopped";
-  let active = null;
-  let tick = 0;
-
+  const $ = id => document.getElementById(id);
+  const transport = new Rover.MockRobotTransport();
+  const controller = new Rover.RobotController(transport);
+  let active = null, polling = false, refreshing = false;
+  const modes = [...document.querySelectorAll('[data-mode]')];
+  const moves = [...document.querySelectorAll('[data-direction]')];
+  function release() { active = null; void controller.stop().then(render); render(); }
   function render() {
-    $("modeBadge").textContent = mode.toUpperCase() + " · SIMULATED";
-    modeButtons.forEach(button => {
-      const selected = button.dataset.mode === mode;
-      button.classList.toggle("selected", selected);
-      button.setAttribute("aria-pressed", String(selected));
+    const sample = controller.sample, sensors = sample?.sensors;
+    $('modeBadge').textContent = controller.mode.toUpperCase() + ' · SIMULATED';
+    modes.forEach(b => { b.disabled = !controller.ready || (b.dataset.mode === 'auto' && controller.mode !== 'idle'); b.classList.toggle('selected',b.dataset.mode === controller.mode); b.setAttribute('aria-pressed', String(b.dataset.mode === controller.mode)); });
+    moves.forEach(b => { b.disabled = !controller.canDrive; b.classList.toggle('active',controller.held === b.dataset.direction); });
+    $('movement').textContent = `Simulated motion: ${controller.motion.toUpperCase()} · ${controller.stopConfirmed ? 'STOP acknowledged' : 'command state'}`;
+    $('connection').textContent = !controller.online ? 'SIMULATOR OFFLINE' : !controller.fresh ? 'SIMULATOR STALE' : 'SIMULATOR CONNECTED';
+    $('freshness').textContent = controller.received === null ? 'No heartbeat' : `Heartbeat ${Math.floor((Date.now()-controller.received)/1000)}s ago · Wi-Fi: not connected to hardware`;
+    $('errors').textContent = controller.error || (sample?.fault ? `Simulated fault: ${sample.fault}` : 'Simulator ready. No physical robot connected.');
+    [['temp','dht11','temperatureC'],['humidity','dht11','humidityPct'],['mq','mq135','raw'],['distance','ultrasonic','frontDistanceCm']].forEach(([id,key,field]) => {
+      const sensor = sensors?.[key]; $(id).textContent = controller.fresh && sensor?.valid && Number.isFinite(sensor[field]) ? sensor[field] : '—';
     });
-    moveButtons.forEach(button => {
-      button.disabled = mode !== "manual";
-      button.classList.toggle("active", button.dataset.direction === motion);
-    });
-    $("movement").textContent = "Motors: " + motion.toUpperCase() + " (simulated)";
-    $("obstacle").textContent = mode === "auto" ? "Avoiding mock obstacles" : "Clear (simulated)";
+    document.querySelectorAll('.updated').forEach(n => { const s = sensors?.[n.dataset.sensor || 'dht11']; n.textContent = s && controller.fresh ? `${Math.floor((Date.now()-controller.received + sample.timestampMs-s.sampledAtMs)/1000)}s ago` : 'unavailable / stale'; });
+    $('obstacle').textContent = !controller.fresh ? 'Unavailable' : sensors?.infrared?.valid ? `IR left: ${sensors.infrared.leftBlocked ? 'blocked' : 'clear'} · right: ${sensors.infrared.rightBlocked ? 'blocked' : 'clear'} (simulated)` : 'IR unavailable';
+    $('flame').textContent = controller.fresh && sensors?.flame?.valid ? (sensors.flame.detected ? 'Possible flame indication (simulated)' : 'No indication (simulated)') : 'Unavailable';
+    $('navigation').textContent = controller.mode === 'auto' ? 'Simulated obstacle preview; no validated rover navigation' : 'Stopped / not enabled';
+    $('diagnostics').textContent = JSON.stringify(sample,null,2);
   }
-
-  function stop() {
-    motion = "stopped";
-    active = null;
-    render();
-  }
-
-  function setMode(next) {
-    stop();
-    mode = next;
-    if (next === "auto") motion = "simulated auto navigation";
-    render();
-  }
-
-  // A press is active only while pointer stays down. This sends NO actual network commands.
-  moveButtons.forEach(button => {
-    button.addEventListener("pointerdown", event => {
-      if (mode !== "manual" || button.disabled) return;
-      event.preventDefault();
-      stop();
-      active = {pointerId: event.pointerId, direction: button.dataset.direction};
-      button.setPointerCapture(event.pointerId);
-      motion = active.direction;
-      render();
+  moves.forEach(button => {
+    button.addEventListener('pointerdown', event => {
+      if (!controller.canDrive || active || event.button !== 0) return;
+      event.preventDefault(); button.setPointerCapture(event.pointerId); active = {button,pointerId:event.pointerId};
+      void controller.drive(button.dataset.direction,Number($('speed').value)).then(render);
     });
-    button.addEventListener("pointerup", stop);
-    button.addEventListener("pointercancel", stop);
-    button.addEventListener("lostpointercapture", stop);
-    // Keyboard activation is a separate, explicit press/release interaction.
-    button.addEventListener("keydown", event => {
-      if ((event.key === "Enter" || event.key === " ") && !event.repeat && mode === "manual") {
-        event.preventDefault();
-        motion = button.dataset.direction;
-        render();
-      }
-    });
-    button.addEventListener("keyup", event => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        stop();
-      }
-    });
-    // Do not use click-to-drive: a click is not equivalent to a hold.
+    ['pointerup','pointercancel','lostpointercapture','blur'].forEach(name => button.addEventListener(name,() => { if (active?.button === button) release(); }));
+    button.addEventListener('keydown',event => { if (event.key !== 'Enter' || event.repeat || active || !controller.canDrive) return; event.preventDefault(); active={button,key:'Enter'}; void controller.drive(button.dataset.direction,Number($('speed').value)).then(render); });
+    button.addEventListener('keyup',event => { if (event.key === 'Enter' && active?.button === button) release(); });
   });
-
-  modeButtons.forEach(button => button.addEventListener("click", () => setMode(button.dataset.mode)));
-  $("stop").addEventListener("click", () => setMode("idle"));
-  $("padStop").addEventListener("click", () => setMode("idle"));
-  document.addEventListener("keydown", event => {
-    if (event.code === "Space" && !event.repeat && !["INPUT","BUTTON"].includes(document.activeElement.tagName)) {
-      event.preventDefault(); setMode("idle");
-    }
+  modes.forEach(button => button.addEventListener('click',async () => {
+    if (button.dataset.mode === 'auto') { $('autoGuard').showModal(); return; }
+    active = null; const request = controller.setMode(button.dataset.mode); render(); await request; render();
+  }));
+  $('confirmAuto').addEventListener('click',async () => { $('autoGuard').close(); await controller.setMode('auto'); render(); });
+  $('cancelAuto').addEventListener('click',() => $('autoGuard').close());
+  ['stop','padStop'].forEach(id => $(id).addEventListener('click',release));
+  $('disconnect').addEventListener('click',async () => { await controller.stop(); transport.online=false; controller.online=false; active=null; render(); });
+  window.addEventListener('blur',release); window.addEventListener('pagehide',release);
+  document.addEventListener('visibilitychange',() => { if(document.hidden) release(); });
+  document.addEventListener('keydown',event => { if(event.code === 'Space' || event.key === 'Escape') { event.preventDefault(); release(); } });
+  document.addEventListener('pointerup',event => { if(active?.pointerId === event.pointerId) release(); });
+  $('speed').addEventListener('input',event => { $('speedDisplay').textContent=event.target.value+'%'; if(active) release(); });
+  $('scenario').addEventListener('change',async event => {
+    await controller.stop(); active=null; transport.online=event.target.value !== 'offline'; transport.fault=event.target.value === 'fault' ? 'DEMO_SENSOR_FAULT' : null; transport.reject=event.target.value === 'reject'; controller.error=''; render();
   });
-  window.addEventListener("blur", stop);
-  document.addEventListener("visibilitychange", () => { if (document.hidden) stop(); });
-  document.addEventListener("pointerup", () => { if (active) stop(); });
-  $("speed").addEventListener("input", event => { $("speedDisplay").textContent = event.target.value + "%"; });
-
-  // Deterministic test values; they are never sensor measurements.
-  const mock = [
-    {t:27,h:52,mq:411,d:48},
-    {t:27,h:51,mq:418,d:46},
-    {t:28,h:52,mq:409,d:45},
-    {t:27,h:53,mq:422,d:47},
-    {t:26,h:53,mq:415,d:50}
-  ];
-  function renderMockReadings() {
-    const sample = mock[tick++ % mock.length];
-    $("temp").textContent = sample.t;
-    $("humidity").textContent = sample.h;
-    $("mq").textContent = sample.mq;
-    $("distance").textContent = sample.d;
-    document.querySelectorAll(".updated").forEach(node => node.textContent = "just now");
-  }
-  renderMockReadings();
-  setInterval(renderMockReadings, 3000);
-  render();
+  setInterval(async () => {
+    await controller.tick();
+    if (!polling && $('scenario').value !== 'stale') { polling=true; await controller.poll(); polling=false; }
+    render();
+  },500);
+  setInterval(async () => {
+    if (refreshing || !active || !controller.held) return;
+    refreshing=true; await controller.drive(active.button.dataset.direction,Number($('speed').value)); refreshing=false; render();
+  },150);
+  void controller.poll().then(render); render();
 })();
