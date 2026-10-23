@@ -1,34 +1,44 @@
-# Codex instructions — VANARAKSHAK
+# Agent instructions — VANARAKSHAK 2.0
 
-You are working in an existing GitHub repository containing an Arduino Uno educational forest-firefighter project.
+## Goal and ownership
+This is a collaborative **school science-fair robot**. **The web application belongs to the user; robot firmware, autonomy, sensor integration and electrical design belong to teammate Saksham.** Follow the assignment in `CODEX_STARTER_PROMPT.md` and docs/13–17. Prioritize a robust **mobile-first web interface** rather than writing speculative hardware-specific firmware.
 
-## Priority
-1. **Safety**: classroom demonstration only; no open flame, smoke, heaters, mains electricity, or dangerous fire testing. Pump output must remain disabled by default. The no-pump blue-LED demonstration is always supported.
-2. **Compatibility**: Arduino Uno R3 ATmega328P, PlatformIO `env:uno`, Servo library. Avoid ESP8266 dependencies unless asked.
-3. **Preserve**: never delete unrelated existing files, history, LICENSE, or other projects. Keep changes in a feature branch and open a PR.
-4. **Docs**: `include/config.h` is the authoritative pin map; synchronize `docs/03_WIRING_AND_POWER.md` and `docs/12_PIN_MAP.md` with wiring or code changes.
-5. **Test**: run native g++ logic tests and `pio run -e uno`; if unavailable, explain rather than claiming success. Add tests for changes to state logic.
-6. **Truth**: distinguish simulator output from measurements. Do not claim hardware tests or sensor accuracy without actual evidence.
+## Mandatory engineering constraints
+- Never claim the rover is safe for or capable of actual forest-fire suppression or emergency detection.
+- No flames, smoke, heat testing, real-fire trials, or autonomous outdoor movement. Demonstrate with safe simulated flags and indoor obstacles.
+- Treat camera PCB identity ("ESP8266 Cam") as unresolved; do not invent a stream endpoint or claim it is ESP32-CAM until checked.
+- MQ135 must not be shown as accurate smoke ppm/CO₂ without proper sensing/calibration and explicit provenance. Prefer `mq135Raw` + relative air-quality index / "uncalibrated" label.
+- DHT11 temperature and humidity readings must always have timestamps and stale/missing state.
+- Never infer exact pin mappings, battery wiring, module ratings or voltage compatibility from names alone.
+- Lithium-ion battery system must use an assembled, protected, adult-verified commercial supply; no cell-assembly, battery-pack construction or charging guidance.
+- Real pump/relay action defaults **disabled** in firmware and UI until independently reviewed for water/electronics separation.
+- Robot must have **on-device** command timeout/watchdog and collision stops. Browser-side safety controls are defense in depth, not substitutes.
+- No public port-forwarding, unauthenticated internet deployment, or hard-coded passwords/tokens.
 
-## Current tree
-- `README.md`: overview and links
-- `platformio.ini`: build target
-- `src/main.cpp`: firmware, event loop
-- `src/fire_logic.h`: pure logic, native-testable
-- `include/config.h`: pin allocation and configurable timing
-- `test/fire_logic_test.cpp`: portable smoke tests
-- `docs/01..12`: specifications, parts, wiring, logic, crafts, safety, demo, roadmap and checking
-- `.github/workflows/firmware.yml`: native tests + firmware compile
-- `CODEX_STARTER_PROMPT.md`: detailed next-agent work order
+## Source and preservation
+- `web/` is the new front-end. A self-contained mock demo is encouraged; visibly mark all telemetry SIMULATED and prevent confusing it with real hardware.
+- `docs/14_API_CONTRACT.md` governs live commands/telemetry. Coordinate any API changes with Saksham. Be explicit about version negotiation, unavailable fields, failure states and stop semantics.
+- `firmware/` is reserved for code authored/approved by Saksham after exact controller identification.
+- `src/`, `include/`, `platformio.ini`, `test/` are **legacy stationary Arduino Uno demonstration**, NOT verified 4WD rover firmware; don't promote or erase them.
+- Never delete the prior ESP8266 placeholder, LICENSE, Git history or unrelated user content.
 
-## Quality constraints
-- Keep nonblocking `millis()` state machines, basic debounce and explicit pin types.
-- Avoid `delay()` in loop and dynamic heap allocation where possible.
-- Preserve default digital pump gate LOW unless a real circuit is independently approved by a teacher/adult.
-- Use **fake/simulated** alarms for demo, not actual fire/heat exposure.
-- Prefer readable beginner code with explanatory comments.
-- Keep additions practical for low-cost recycled-material science-fair displays.
-- Do not add unnecessary cloud accounts, Wi-Fi, internet uploads, third-party paid APIs or credentials.
+## UI priorities
+1. Accurate responsive mobile layout, high-contrast accessible buttons, readable tap targets.
+2. Connection badge + telemetry freshness + last-updated time.
+3. DHT11 temperature (°C), humidity (%RH), MQ135 raw/relative air-quality display; no fabricated precision.
+4. Optional camera viewer with unavailable state.
+5. IDLE / MANUAL / AUTO clearly differentiated; show mode acknowledgment from firmware rather than optimistic changes.
+6. Directional press-and-hold controls; STOP on pointerup/cancel, blur, page hide, disconnect; persistent physical stop remains firmware responsibility.
+7. Prominent STOP command; all controls disabled in offline or stale/fault conditions.
+8. No "pump ON" control in live mode until explicit capability and reviewed authorization.
+9. Responsive tests at 320px, 390px, 768px, 1280px widths.
+10. Keyboard access, visible focus styles, reduced-motion consideration and safe handling of touch events.
 
-## Finish
-Provide a PR summary with changed files, actual test outcomes, hardware follow-up tasks, safety notes, and limitations. Never self-merge without being asked.
+## Work and GitHub
+- Read repository content and docs before coding. Avoid unnecessary packages/complex frameworks.
+- Code in a feature branch. Do not merge into `main` without human review.
+- Do not modify firmware-owned files unless Saksham explicitly agrees on the new contract.
+- Maintain a mock backend so development and testing don't require an active robot.
+- Run actual lint/tests/build where tools exist; never fabricate passes or real sensor measurements.
+- Update docs/15_TEAM_WORKFLOW.md with handoff contracts, not private tokens or passwords.
+- Clearly enumerate known unknowns before deployment.

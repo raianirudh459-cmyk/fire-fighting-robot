@@ -1,64 +1,131 @@
-# Codex starter prompt — VANARAKSHAK
+# CODEX STARTER PROMPT — VANARAKSHAK 2.0 RESPONSIVE WEB CONTROL
 
-You are a senior embedded-systems engineer, Arduino educator, and school STEM exhibition mentor. Work in the connected GitHub repo **raianirudh459-cmyk/fire-fighting-robot**, starting from the **feature/vanarakshak-uno-foundation** branch, which already contains starter source, 12 project documents, and CI. Do NOT recreate or replace the repo. Create your own new working branch from the current feature branch (for example `codex/vanarakshak-verification`), and ultimately open a PR toward `feature/vanarakshak-uno-foundation`. Do not touch `main` or remove the unrelated existing ESP8266 file. Read `AGENTS.md` first, then `README.md`, then every file in `docs/`, `include/`, `src/`, `test/`, `platformio.ini`, and GitHub Actions.
+**Copy this whole prompt into Codex if you choose to use Codex.** Files and this prompt are already maintained directly in GitHub without spending Codex allowance. Actual Codex execution will use the allowance applicable to your account.
 
-## Project objective
-Prepare an age-appropriate, reusable-material **3D Forest Fire Fighter educational model** called **VANARAKSHAK**, slogan **Detect Early. Spray Smart. Save Forests.** The competition rules are: (1) eco-friendly/reusable 3D model; (2) demonstrate identifying forest-fire signs or protecting animals; (3) at least one innovative feature, such as a sensor or sprinkler; (4) clearly explain forest/wildlife/biodiversity problem and how the model addresses it; (5) model name and slogan; (6) completed model; (7) a five-minute jury presentation.
+## Mission / product
+Act as a senior frontend engineer, real-time IoT dashboard architect, accessibility expert, and collaborative GitHub maintainer. Develop a **mobile-first web dashboard** for VANARAKSHAK 2.0: a school science-fair 4-wheel forest-firefighter demonstration rover.
 
-### Non-negotiable interpretation
-This is a **static tabletop Arduino Uno demonstration**, not a real-world firefighting appliance. Real fire, smoke, heating tools, outdoor trials, and life-safety claims are prohibited. The default working mode uses a button to simulate fire, an SG90 servo to sweep a lightweight paper nozzle, and a BLUE LED to represent intermittent water delivery. Real pump activation must stay disabled (`ENABLE_PUMP_OUTPUT = false`) unless the human user explicitly requests optional work *after* teacher/adult electrical and waterproofing inspection. The output must never tell a student to test using fire. Do not claim that a low-water *button* is a physical water-level sensor.
+Your primary stakeholder and frontend owner is the user. **Saksham** is responsible for robotics firmware, sensor wiring, driving logic, autonomous navigation, and local Wi-Fi API implementation. You must not take over, rewrite or overwrite Saksham's firmware. Agree on a typed, versioned API contract and build the frontend with simulated telemetry first.
 
-## Existing planned wiring — don't change without updating every document
-Uno:
-- D2: digital output DO from a checked 5 V-compatible flame module (commonly LOW = detected)
-- A0: LM35 analog Vout, with verified exact LM35 part pinout
-- D3: safe-demo momentary button -> ground, `INPUT_PULLUP`
-- D4: simulated-low-water momentary button -> ground, `INPUT_PULLUP`
-- D5: reserved optional logic-level MOSFET pump gate (LOW by default; disconnected for the classroom)
-- D6: small passive piezo buzzer
-- D7: red alert LED via 220-ohm resistor
-- D8: green ready LED via 220-ohm resistor
-- D9: SG90 servo signal; servo powered by separately regulated suitable 5 V source, common ground
-- D10: blue simulated-spray LED via 220-ohm resistor.
-Keep all wet items and tanks physically separated from the electronics.
+**GitHub repo:** `raianirudh459-cmyk/fire-fighting-robot`
+**Baseline branch:** `feature/vanarakshak-uno-foundation` (now includes VANARAKSHAK 2.0 roadmap)
+**Your working branch:** create `codex/web-dashboard-v2` (or unique equivalent) from latest baseline, push, and open a PR into the baseline. Do not merge to main.
 
-## Expected firmware behavior
-- Ready: green LED ON, red and blue OFF.
-- Caution: if only one sensor warns, red flash + beep, no spray request.
-- Confirmed real-sensor logic: only if flame digital DO indicates detection **and** LM35 temperature is at/above a configurable threshold for at least 2 continuous seconds. This is merely a learning example, not reliable wildfire recognition.
-- Demo: pressing D3 enters response mode regardless of real sensors. Pressing D3 again returns to normal sensing.
-- Response: servo sweeps around 60–120 degrees during the **3 seconds ON / 7 seconds OFF** LED cycle; optional pump output stays forcibly off in default firmware.
-- Low-water simulated hold: D4 forces spray LED OFF (and optional gate LOW) but warning remains active.
-- Code should stay nonblocking, avoid memory-heavy types on Uno, provide readable 115200 baud diagnostics.
-- Check for overflow-safe `millis()` comparisons and for ADC and input polarity assumptions.
-- Do not make unsafe promises that firmware alone makes a pump circuit fail-safe.
+Project name: **VANARAKSHAK 2.0 — Forest Fire Fighter Rover**
+Slogan: **Detect Early. Respond Smart. Protect Forests.**
 
-## Your mission (execute, don't just plan)
-1. Inspect repository and current branch. Keep the present docs/content as the baseline; preserve history.
-2. Run the native logic test command:
-   `g++ -std=c++11 -Wall -Wextra -Werror test/fire_logic_test.cpp -o /tmp/forest-logic-test && /tmp/forest-logic-test`
-3. Run a clean PlatformIO build: `pio run -e uno`. If tools aren't installed, install normally if permitted, otherwise document limitation truthfully. Do not fabricate passing results.
-4. Thoroughly review `src/main.cpp` and `src/fire_logic.h`; fix actual compile/logic mistakes, including edge cases around `millis()`, button debouncing, a persistent dual-sensor confirmation window, servo travel bounds, pump-disabled guarantee, and re-entering ready.
-5. Improve testability by extracting pure C++ decision logic (where feasible) and writing meaningful host tests: READY, CAUTION, confirmed real-sensor fire, simulated DEMO, low-water inhibit, reactivation after low-water release, spray ON/OFF timings, servo sweep bounds, boot pump OFF, and demo reset. If hardware-only tests cannot execute on host, document them as manual checks rather than claiming them automated.
-6. Where worthwhile, refactor to a clean modules structure, retaining Arduino Uno RAM and flash limits and beginner readability. Prefer the current small, readable design over over-engineered frameworks.
-7. If needed, add a **print-friendly** labeled pin diagram, wiring table, black-and-white block diagram, and storyboard as text or SVG, with no unverifiable circuit promises. Every wiring reference MUST match `include/config.h`. Optional assets in `assets/`; don't depend on unavailable image generation tools.
-8. Improve existing docs for a novice student: parts and cost worksheet with prices left blank until verified; eco-friendly cardboard craft instructions; precise output demonstration; 5-minute presentation script; rubric coverage, limitations, troubleshooting.
-9. Include safe stage-by-stage assembly steps: start with dry electronics, then mount the lightweight nozzle, then add decorative reused forest pieces. Keep the classroom demo pump-free.
-10. Audit GitHub Actions for the correct PlatformIO build; if needed, pin dependency versions reasonably, and ensure the test job fails on real errors.
-11. Update `docs/09_ROADMAP.md`, adding only tasks actually completed. Mark actual hardware upload, live servo movement, and real sensor calibration as unverified unless evidence exists.
-12. Commit logically, push to your working branch, and create a pull request back into `feature/vanarakshak-uno-foundation`. Include PR description: features, before/after, testing commands and exact actual outcomes, parts still to acquire, no-fire safety disclaimer, and checklist. Do not self-merge unless asked.
+## Read first
+Read `AGENTS.md`, `README.md`, `docs/01_PROJECT_BRIEF.md`, `docs/13_WEB_DASHBOARD.md`, `docs/14_API_CONTRACT.md`, `docs/15_TEAM_WORKFLOW.md`, `docs/16_POWER_AND_HARDWARE_DECISIONS.md`, `docs/17_WEB_TEST_PLAN.md` and the starter `web/` files. Read other docs for context. Identify that `src/main.cpp`, `include/config.h` and `platformio.ini` are **old Arduino Uno stationary model firmware** and NOT confirmed code for this mobile robot. Preserve those files.
 
-## Definition of done
-- The Arduino Uno sketch compiles for the Uno target in PlatformIO, or a real blocker is clearly documented.
-- Native test suite passes and meaningful edge cases are covered.
-- Clear, internally consistent source, docs, diagrams and pin assignments.
-- No fake hardware test claims; no real-fire test instructions.
-- Demo mode works in design with a single button, blinking LEDs, buzzer, sweeping servo, simulated water-saving, and low-water stop.
-- Source committed and pushed; PR created when GitHub permissions allow.
-- Provide final concise summary, commit/PR link, test evidence, and next physical-build steps.
+## Hardware context (do not infer pin map)
+- Four DC drive motors, two L298N dual-channel motor drivers.
+- Relay module with 5 V DC miniature water pump and tubing.
+- Flame sensors, infrared obstacle sensors, ultrasonic sensors.
+- DHT11 digital temperature/relative humidity.
+- MQ135 broad air-quality/gas sensor (label uncalibrated raw readings honestly; cannot honestly call it precise smoke concentration without calibration).
+- ESP8266 for Wi-Fi.
+- Camera hardware called "ESP8266 Cam" by the team, with **actual camera board model still to be verified**; do not assume ESP32-CAM until hardware confirmed.
+- Lithium-ion power pack and switches; actual voltage, current, connector type, protection, and distribution require adult/teacher approval. No battery pack construction guidance.
+- Whether an Arduino Uno remains as the rover motor/sensor controller is NOT confirmed. The ESP8266 alone may not have sufficient suitable I/O; defer hardware allocation to Saksham.
 
-## Working style
-Act autonomously within this scope. Don't ask basic questions the repository already answers. Favor safe reasonable defaults, run validations, update documentation, and only stop for a genuine blocker or decision requiring physical hardware. Avoid paid external services and credentials. Do not create any Codex recurring/background task.
+## User's responsibilities and target experience
+Build the frontend of a live rover control center, with superb usability on mobile.
 
-## Important distinction
-This instruction is intended **to be pasted into Codex** and will consume whatever Codex usage the user's account ordinarily uses. The repository foundation itself has already been committed via the connected GitHub app, independently of Codex.
+### Screen A: Dashboard (home)
+- Clearly identified ROBOT / SIMULATOR connection state. Never show generated numbers as real telemetry.
+- Big accessible tiles: **temperature °C**, **humidity % RH**, **MQ135 raw / relative air quality**, all with sensor source and last update.
+- Show firmware-reported flame alerts, IR and ultrasonic obstacle indications, current mode, movement command acknowledgment, robot motion status, pump availability, fault or low-power warnings only where actual telemetry exists.
+- Show state of Wi-Fi, last heartbeat, telemetry freshness, camera availability and a prominent emergency STOP button.
+
+### Screen B: Manual driving
+- Large touch-friendly Forward, Backward, Left, Right, and STOP controls or responsive D-pad.
+- Motion only **while a control is held**. Release/cancel/blur/page visibility loss => transmit STOP promptly; don't send repeated stale commands.
+- Adjustable speed preset or slider; actual speed limits are confirmed by robot capabilities.
+- Switching to manual must wait for successful firmware mode acknowledgement.
+- Do not queue movements when connection is lost; disable all movement actions while telemetry is stale or firmware reports a fault.
+- **On-device watchdog** required: firmware stops motors if a command heartbeat expires. Browser handling is supplementary.
+
+### Screen C: Autonomous mode
+- Clearly labeled "INDOOR DEMO ONLY" and guarded enable/disable flow.
+- Start from IDLE and require user action; switch only after firmware acknowledges.
+- Indicate detected obstacles and navigation states: exploring, avoiding, stopped, fault, etc. Only display values received from firmware.
+- Autonomy must stop on unexpected loss of essential ranging/IR input, actual faults, or physical/electrical STOP. If firmware can't confirm these guarantees, leave AUTO disabled.
+- STOP is always accessible and prioritized over all other controls.
+
+### Screen D: Camera / live view
+- Create a responsive 16:9 video panel with states: NOT CONFIGURED, CONNECTING, LIVE, RECONNECTING, OFFLINE.
+- The actual camera model may be ESP32-CAM, ESP8266-compatible camera variant, or another device. Do not choose a library or streaming URL until Saksham identifies it.
+- UI may accept a *validated* LAN-only camera URL from firmware capabilities or same-origin gateway. Clearly describe mixed-content, CORS, local network and security issues; do not silently open arbitrary externally supplied URLs.
+- Don't record, upload, or share video by default.
+- Show placeholders when camera stream isn't supported.
+
+### Screen E: System
+- Board model, firmware version, API version, connected/disconnected status, raw telemetry diagnostics, sensor health, optional settings.
+- Show capabilities and hidden/deactivated controls for unsupported functions.
+- STOP and safe disconnect on every screen.
+
+## Visual design
+Aim for a polished, modern robotics command console: forest green, deep slate, alert amber/red used only for real statuses, clear typography, high contrast, compact but readable cards, subtle icons, intentional white space.
+
+Responsive breakpoints: 320px, 390px, 768px, 1280px.
+Mobile-first, thumb-accessible. Work in portrait and landscape. Respect reduced motion. Do not rely on hover for any essential interaction. Keyboard accessibility on desktop. Labels and data cards must remain readable without scrolling sideways.
+
+## Technology stack
+The repo already includes a dependency-free `web/index.html`, `web/styles.css`, and `web/app.js` prototype in **SIMULATOR ONLY** mode. Improve that existing starter first. You can propose React + TypeScript + Vite if justified, but do not migrate just to add frameworks; keep demo easy to host locally and easy for Saksham to integrate.
+
+Prefer an explicit transport interface:
+`MockRobotTransport` — deterministic, clearly simulated; can be used without hardware.
+`HttpRobotTransport` or `WebSocketRobotTransport` — only once the firmware has a verified URL/endpoint and approved local access.
+
+Treat docs/14_API_CONTRACT.md as the API source of truth. Use the endpoints/payloads documented there unless your team jointly revises them. Build explicit handling for errors, timeouts, capability negotiation, duplicated commands, mode acknowledgments and STOP priority. Never claim mocked states are live data.
+
+## Communication/API, in coordination with Saksham
+Proposed contract:
+- GET `/api/v1/health` -> ready, firmware version, capabilities, server time.
+- GET `/api/v1/telemetry` -> DHT11 temp/humidity, MQ135 raw/index, sensors, motion, mode, warnings, monotonic sequence and timestamp.
+- POST `/api/v1/mode` with requested `idle|manual|auto`; mode change only after server ack.
+- POST `/api/v1/drive` with press-and-hold direction, numeric safe speed, sequence.
+- POST `/api/v1/stop` high priority, all motors stop.
+- POST `/api/v1/pump` supported ONLY after Saksham confirms explicit guarded capability and an adult-reviewed real water system; disable by default.
+- GET `/api/v1/capabilities` optional extras including camera.
+- Optional `/ws` after firmware is confirmed to support it; not required to build a good initial UI.
+
+Firmware, not browser, must own motor stopping and a bounded drive-command timeout. The frontend must never directly connect to exposed internet endpoints or include repository-stored passwords.
+
+## Development phases — complete as much as verifiable
+**P0 Discover**: Read repo, summarize existing UI and gaps; inspect git status. Do not overwrite unrelated work.
+**P1 Mock interface**: Build high-quality mobile UI with obvious SIMULATED banner, fake sensor changes, accessible manual controls, 3 modes, obstacle preview and camera-unavailable state.
+**P2 State and safety**: Implement a controller with explicit offline/stale/busy/fault handling, hold-to-drive, STOP on release/cancel/visibilitychange/blur, visible STOP and safe mode switching. Unit test state transformations.
+**P3 API agreement**: Implement type definitions / JSON examples, capability detection and an adapter skeleton while keeping live connection disabled until Saksham supplies tested firmware API.
+**P4 Live readiness**: Add retry/backoff logic, last telemetry age, errors, ack/command sequence handling; never auto-restart motors after reconnect.
+**P5 Quality**: Improve a11y, keyboard controls, reduced motion, touch targets, no horizontal overflow, screenshot review of mobile breakpoints, and documentation.
+**P6 Verification**: Run real tests and build commands available in the repo, record exact outcomes, mark hardware/network tests pending.
+**P7 GitHub**: Commit improvements, push your branch, create PR back to baseline, include risks and integration checklist. Do not self-merge.
+
+## Mandatory safety and correctness
+- This is a supervised school model, not a real wildfire robot. Never instruct open flame, burning, smoke, heaters or live firefighting trials.
+- No autonomous outdoor driving or unattended operation.
+- A web STOP control cannot substitute for a real power switch or firmware watchdog.
+- Auto mode cannot be represented as obstacle-safe without real validated sensor logic; keep feature unavailable in live mode until Saksham confirms it.
+- All power and lithium-ion pack handling is the responsibility of an adult with a suitable protected, commercially assembled supply; do not provide DIY pack or charging instructions.
+- MQ135 is a gas sensor, not an accurate smoke-density meter. Clearly distinguish raw counts/relative index from calibrated physical quantities.
+- DHT11 has limited resolution and sample rate. Avoid aggressively claiming sub-second real readings.
+- Pump is OFF and UI pump control DISABLED by default, subject to later separate integration approval.
+- Confirm "ESP8266 Cam" module model; do not assume it already streams video.
+- Do not invent physical tests, network endpoints, hardware measurements, URLs, pins or credentials.
+
+## Deliverables
+1. Mobile-compatible frontend source in `web/` with clearly labeled mock/demo mode.
+2. Dashboard for temperature, humidity, MQ135 gas/air-quality sensor, mode, obstacles, flame indications and connection.
+3. Manual direction controls with hold-to-drive + STOP.
+4. Autonomous-mode status UI with supported/unsupported state.
+5. Camera card with unavailable fallback and safe future integration point.
+6. Versioned API adapter design and sample payloads.
+7. Accessibility and responsive verification evidence.
+8. Documentation updated (including team roles, UI test cases, API contract, limitations).
+9. Commits pushed and PR opened, without overwriting Saksham's firmware.
+
+## Final report
+Give exact branch and PR URL, changed files, features, commands actually run, test outcomes, unresolved board/API questions, safe hardware handoff needs, and next action for each team member. Keep unfinished tasks honest. **Do not ask for secrets, Wi-Fi passwords or battery-pack assembly details.**
+
+**Start now, work within the repository, and do not merely write another plan.**
