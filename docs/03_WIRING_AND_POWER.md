@@ -1,70 +1,42 @@
-# 03 — Wiring and power guide
+# 03 — Architecture and wiring ownership (NOT a final physical schematic)
 
-**Only build with USB/regulated low-voltage components.** Have a teacher or adult verify all connections with power disconnected. Check the exact manufacturer's module pinout. Never test with a real flame, smoke, or hot object.
+**Do not follow old Uno stationary prototype pin map to build this new 4WD rover.** Exact model markings, controller/level-shifting, grounding, protected power and motor-drive current limits are not yet confirmed. **Saksham and a teacher/adult** must review the complete physical schematic before power is applied.
 
-## Safe base circuit (NO pump)
-| Uno pin | Device connection | Notes |
-|---|---|---|
-| 5V | LM35 supply; flame module VCC if rated 5 V | Check sensor module specifications |
-| GND | Common signal ground | All logic grounds common |
-| D2 | Flame module digital DO | Most low-cost modules: LOW means detection; verify your own |
-| A0 | LM35 Vout | LM35 analog sensor output |
-| D3 | DEMO button terminal 1 | Other terminal to GND; INPUT_PULLUP |
-| D4 | LOW-WATER button terminal 1 | Other terminal to GND; INPUT_PULLUP |
-| D5 | Unconnected until optional pump driver is inspected | The code keeps it LOW by default |
-| D6 | Passive low-current piezo positive | Other terminal GND |
-| D7 | 220-ohm resistor -> red LED anode | LED cathode -> GND |
-| D8 | 220-ohm resistor -> green LED anode | LED cathode -> GND |
-| D9 | SG90 servo signal wire | Servo POWER from separate 5 V supply |
-| D10 | 220-ohm resistor -> blue LED anode | LED cathode -> GND |
-| External 5 V | Servo red power lead | Regulated independent supply with adequate current |
-| External supply GND | Servo brown/black ground, UNO GND | Common ground, **never** external 5 V to a GPIO |
-
-## LM35 identification
-LM35 variants and modules can have different physical layouts. Check the datasheet/product marking: commonly, with the TO-92 flat side facing you and leads downward, the pins from left to right are +Vs / Vout / GND. **Confirm before connecting**: incorrect orientation can harm parts. Raw temperature accuracy depends on Uno's analog reference; calibrate in a comfortable room using a reliable thermometer.
-
-## Circuit overview
-```text
-                 +-----------------------+
-                 |      ARDUINO UNO      |
- Flame DO -------| D2                    |
- DEMO button ----| D3 (button to GND)    |
- LOW WATER ------| D4 (button to GND)    |
- Gate (optional)-| D5                    |
- Piezo buzzer ---| D6                    |
- Red LED --------| D7                    |
- Green LED ------| D8                    |
- SG90 signal ----| D9                    |
- Blue LED -------| D10                   |
- LM35 Vout ------| A0                    |
-                 | GND -----------+      |
-                 +-----------------|------+
-                                   | common signal ground
-                           External 5V servo supply
-                         +5V -> servo red wire only
-                         GND -> servo brown/black
+## Functional architecture
+```mermaid
+flowchart TB
+  B[Phone / laptop dashboard] <-->|Versioned API over local Wi-Fi| E[ESP8266 communication endpoint]
+  E <-->|Protocol TBD| C[Motion + sensor controller — board TBD]
+  C --> L1[L298N #1 — 2 DC channels]
+  C --> L2[L298N #2 — 2 DC channels]
+  L1 --> M1[DC motor 1 and DC motor 2]
+  L2 --> M2[DC motor 3 and DC motor 4]
+  C --> F[Flame / IR / ultrasonic inputs]
+  C --> ENV[DHT11 temp and humidity / MQ135 gas sensor]
+  C --> REL[Relay control — OFF by default]
+  REL -.-> P[Optional 5 V pump and tubing]
+  CAM[Camera module model TBD] -->|Local camera stream if supported| B
 ```
-Note: all LEDs need individual 220-ohm series resistors. The flame sensor and LM35 need their approved low-voltage supply and shared logic ground.
 
-## Optional pump stage — only after teacher/adult review
-- Choose a **5 V DC miniature pump** and a MOSFET rated for fully-on gate drive at Arduino logic voltage and at least the pump's startup current.
-- Use a separate adequate **regulated 5 V** pump power supply; do not power the pump from the Arduino board.
-- External +5 V -> pump positive.
-- Pump negative -> MOSFET drain; MOSFET source -> external supply ground.
-- D5 -> 220-ohm resistor -> MOSFET gate; 10-kohm resistor from gate to source/ground.
-- Flyback diode across the pump leads: **cathode/striped end to pump +5 V, anode to pump negative/MOSFET drain**.
-- Tie external supply GND and Uno GND for the logic reference.
-- Place the water bottle/tube/pump assembly on a separate waterproof tray, positioned lower and away from the Uno, USB connection, and all exposed electronics.
-- Only after an adult has checked polarity, insulation, driver suitability, leak protection, and a non-water dry-run should `ENABLE_PUMP_OUTPUT` be changed from `false` to `true` in `include/config.h`.
-- Never run an unapproved motor, pump, relay, or mains-powered device from a microcontroller pin.
+**This is a data-flow drawing, not an electrical diagram.** Avoid deciding GPIO pins before the exact controller board and number of sensors are confirmed.
 
-## General checks
-1. USB unplugged; compare EVERY wire against the pin map.
-2. Confirm all grounds are correct and no short is possible.
-3. Test individual LEDs and buttons in software.
-4. Start with the pump disconnected and output disabled.
-5. Verify servo supply stability with a teacher; an unstable supply can repeatedly reset Uno.
-6. Keep all liquids out of the electronics zone.
+## Hardware design decisions to resolve
+1. Is an Arduino Uno still used for many sensor/motor pins? The component list names ESP8266, but its GPIO/ADC capacity may be insufficient alone.
+2. How are 4 DC motor channels grouped across the two L298N modules? Does the driver match each motor's *measured and specified* current at expected load?
+3. What voltage and current do motors and each sensor module require? A 5 V device and 3.3 V ESP8266 logic are not interchangeable.
+4. Which exact module was called "ESP8266 Cam"? Standard ESP32-CAM camera code cannot be assumed compatible.
+5. What verified power architecture provides suitable protected supplies for controller(s), motors, sensors and 5 V pump?
+6. Which module performs emergency motor stop if browser/network link is lost?
+7. Is the pump/relay electrically isolated and physically distant from the sensor/logic area?
 
-## Firmware signals and timing
-See docs/04_FIRMWARE_AND_STATES.md. Servo uses Timer1 on a classic Uno; do not add PWM output on pins 9/10 without checking Servo library interactions.
+## Safe deployment principles
+- Power remains OFF while wiring is changed.
+- Commercial preassembled and protected lithium-ion supply only, adult-approved; no DIY pack/charging design.
+- Real motors and pump need correctly rated independent power switching, not GPIO supply.
+- Pump OFF at startup and until the wet stage is explicitly approved; keep water/other liquids away from exposed electronics.
+- Physical master OFF switch and accessible emergency stop are required.
+- A web STOP button complements, **not replaces**, an on-device command watchdog.
+- Limit rover to supervised indoor demos on a clear floor or contained arena, away from people, animals, fire or water.
+
+## After board inventory
+Saksham creates a schematic in `firmware/docs/`, documenting each confirmed physical pin, logic level, driver current rating, connector and protection. The front-end **must not depend on specific pins**; it depends on the documented JSON API instead.

@@ -1,60 +1,36 @@
-# 05 — Eco-friendly 3D model construction
+# 05 — Physical rover + recycled forest exhibition
 
-## Tabletop layout
-**Suggested size:** 50 cm × 35 cm, subject to what waste cardboard is available. Keep a clear electronics compartment outside the scenic water zone.
+## Layout concept
+A supervised indoor 4WD rover travels inside a small **clear arena** bordered by reused cardboard, with paper trees, wildlife signs and obstacles that cannot snag the wheels. Keep visitors outside the movement area.
 
 ```text
-                   FRONT / JUDGES
-     +------------------------------------------------+
-     | HEALTHY PAPER FOREST       FIRE ZONE (paper)   |
-     | Tree A     Tree B          red/orange paper    |
-     |  deer/shelter <--- escape arrows               |
-     |                                                |
-     |        [SG90 rotating lightweight nozzle]      |
-     |                 ^                              |
-     |        VANARAKSHAK GUARDIAN                    |
-     |        [blue spray LED nearby]                 |
-     |                                                |
-     | [Sensor post]       [Water tank prop]           |
-     |                                                |
-     | [buttons + LEDs]    [dry UNO electronics box]   |
-     +------------------------------------------------+
-               label: recycled materials
+  +--------------------------------------------------------------+
+  | VANARAKSHAK: DETECT EARLY. RESPOND SMART. PROTECT FORESTS.  |
+  |                                                              |
+  |  [recycled trees]   [lightweight indoor obstacle]            |
+  |                                                              |
+  |            <---- 4-WHEEL ROVER SAFE PATH ---->                |
+  |                                                              |
+  | [wildlife shelter illustration]   [printed sensor explanation]|
+  |                                                              |
+  | [WATER PROP ON SEPARATE DRY DISPLAY] [PHONE WEB DASHBOARD]   |
+  +--------------------------------------------------------------+
 ```
 
-## Model appearance
-- Body: a small friendly box-shaped guardian robot (reused carton), with paper eyes, leaf badge, and mission label.
-- Tower: a straw/cardboard column or craft dowel holds the flame sensor in an open view; never use fire to verify it.
-- Nozzle: paper or lightweight plastic tube on SG90 horn; minimize torque and prevent binding.
-- Water tank: a clean used bottle. For a no-pump demo, use it as a **visual prop** with paper water droplets and arrows; keep it closed.
-- Tree cluster: curled scrap paper leaves, cardboard trunk circles, moss-like paper offcuts.
-- Wildlife area: animals cut from printed/reused paper, arrows marking a safe corridor.
-- Optional mini sign: sensor station + temperature reading explanation, warning LEDs, and water saver timeline.
+## Rover appearance
+- Reuse scrap cardboard or paper as a **non-load-bearing** decorative shell. Do not obstruct driver ventilation, sensor view, wheels, antennas, or emergency switches.
+- Label front flame sensors, ultrasonic/IR obstacle sensing, DHT11, MQ135, Wi-Fi, and camera (if fitted).
+- Add a clear "MANUAL / AUTONOMOUS" flip-sign or dashboard printout.
+- Keep the 5 V pump/tubing absent or decorative until adult review of power, leakage and safe mounting. Do not spray water near electronics or people.
+- Keep lithium-ion supplies mechanically protected and accessible to an adult. Never tape exposed bare cells onto cardboard.
 
-## Build sessions
-### Session 1 — dry layout
-1. Sketch forest, robot, water-zone, and electronics-zone positions.
-2. Cut the cardboard base with adult supervision if cutting tools are needed.
-3. Mark safe cable channels; avoid crushing or stretching jumper wires.
-4. Build lightweight paper trees and animal shelters; reuse offcuts for sign boards.
+## Build sequence
+1. **Joint planning:** verify chassis and board dimensions, clear driving arena, camera module label, parts.
+2. **Saksham:** mount/verify four motors and drivers, controller, and sensors with power off and adult-reviewed wiring.
+3. **You:** build responsive mock dashboard independently; print QR code only after the site address is finalized, local and trusted.
+4. **Both:** assemble recycled forest display, labels and wildlife explanation.
+5. **Both + adult:** carry out unplugged inspection, no-pump/ no-water testing and low-speed enclosed driving rehearsal.
+6. **Both:** rehearse five-minute script. Use safe **simulated fire detection** flags; never create real smoke or flames.
 
-### Session 2 — electronics on a breadboard
-1. Unplug USB. Place the Uno and breadboard on a dry, nonconductive tray.
-2. Add one part at a time using docs/03 and docs/12. Do NOT add the pump.
-3. With a teacher, inspect polarity, 5 V suitability, resistors, and servo supply.
-4. Upload firmware; verify buttons and LEDs before attaching the servo nozzle.
-
-### Session 3 — integrate model
-1. Mount servo with a lightweight paper nozzle; verify its sweep has no obstruction.
-2. Secure sensor wires where visitors cannot pull on them.
-3. Add titles, feature labels, ecosystem explanation, and reused-material labels.
-4. Hide distracting wiring without trapping heat, moisture, or making connections uninspectable.
-
-### Session 4 — rehearse
-1. Start with READY, press DEMO once, discuss warning and response.
-2. Point to blue LED and servo: they simulate periodic spraying.
-3. Hold LOW WATER to show conservation/inhibit response.
-4. Reset DEMO; finish on the biodiversity and recycling message.
-
-## Craft safety
-Ask an adult for help when cutting or mounting parts. Keep water well away from power and electronics. Do not stage fire, smoke, hot-object, or live outdoor-fire tests.
+## Eco-friendly storytelling
+A forest consists of plants, animals and interdependent habitats. Explain how environmental monitoring and responsible remote observation could support awareness, while real wildfire protection needs trained professionals. The model is a demonstration, not a deployed system.

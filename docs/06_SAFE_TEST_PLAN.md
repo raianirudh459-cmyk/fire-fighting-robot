@@ -1,41 +1,43 @@
-# 06 — Safe test plan and acceptance sheet
+# 06 — Safe system test plan (no fire, no smoke)
 
-Test the **no-pump, no-water, no-flame** version first. Never use a real flame, hot object, smoke source, or uncontrolled heat as a demonstration. These steps use buttons and static code checks.
+## Before any hardware testing
+- [ ] Exact module models and controller board checked by Saksham.
+- [ ] Adult verifies protected preassembled battery power and main switch; never assemble or charge loose cells as a school activity.
+- [ ] All high-current motors/pump verified separately with motors off ground and suitably controlled test space.
+- [ ] Water system disconnected; relay/pump disabled.
+- [ ] Rover secured inside an indoor clear arena, wheels away from hands and hair.
+- [ ] Physical main OFF switch accessible.
+- [ ] No flame, smoke, heater, candle, burner or simulated chemical smoke source.
 
-## Checklist before power
-- [ ] Teacher/adult checked LM35 and flame module labels and voltage ratings.
-- [ ] USB disconnected during wiring changes.
-- [ ] Servo uses suitable regulated power; grounds shared.
-- [ ] No shorts, bare stray wire, or LED connected without resistor.
-- [ ] Optional pump DISCONNECTED; `ENABLE_PUMP_OUTPUT = false`.
-- [ ] Water tank prop sealed and away from electronics.
-
-## Scripted dry-run tests
-| ID | Setup and action | Expected output |
+## UI acceptance (your role)
+| Test | Action | Expected |
 |---|---|---|
-| T01 | Turn on, don't press buttons | Green LED solid; pump pin LOW; blue off |
-| T02 | Read Serial Monitor | 115200 baud; plausible room temperature after calibration |
-| T03 | Tap DEMO once | Red blinks + piezo; blue on 3 s / off 7 s; servo pans during blue |
-| T04 | Tap DEMO a second time | Green solid; red and blue off; servo centers |
-| T05 | While demo is active, hold LOW WATER | Blue off and optional pump gate LOW, alert continues |
-| T06 | Release LOW WATER while demo active | Blue resumes cycling, returning to SPRAY phase |
-| T07 | Restart Uno with both buttons unpressed | Demo resets OFF; pump gate remains LOW |
-| T08 | Press/release DEMO repeatedly and slowly | Each separate press toggles only once |
-| T09 | Cover/uncover sensor under ordinary indoor conditions (no heat/flame) | Serial flame value may change; do NOT infer fire detection quality |
-| T10 | Disconnect pump permanently for event use | Complete demonstration works with LED + servo alone |
+| W01 | Open page on 320px mobile | No horizontal scroll; all buttons usable |
+| W02 | Open local simulated dashboard | SIMULATED label visible; no claim of real data |
+| W03 | Change simulator mode to MANUAL | UI shows explicit mode and control state |
+| W04 | Hold direction then release | Mock transport receives stop immediately |
+| W05 | Drag finger off a pressed button | Motion request ends / stop issued |
+| W06 | Hide tab or switch apps while controlling | Stop issued, control returns to neutral |
+| W07 | Select AUTO | Explicit badge and indoor-only caveat |
+| W08 | Simulate lost connection | Controls disabled, clear OFFLINE/stale state |
+| W09 | Camera unavailable | Useful placeholder; no broken video |
+| W10 | MQ135 not calibrated | Labels raw/relative, not fabricated ppm |
+| W11 | Values unavailable | Show "—" and sample age, not zero |
+| W12 | STOP button | High-visibility, promptly clears requested motion |
 
-## Software test commands
-```bash
-g++ -std=c++11 -Wall -Wextra -Werror test/fire_logic_test.cpp -o /tmp/forest-logic-test
-/tmp/forest-logic-test
-pio run -e uno
-```
+## Joint contract tests
+| Test | Setup | Expected |
+|---|---|---|
+| I01 | Firmware heartbeat expires | On-device motor driver stops independently of browser |
+| I02 | Browser switches MANUAL -> AUTO | Robot stops, acknowledges safe change; no accidental drive |
+| I03 | Invalid distance sensor | AUTO refuses or stops and reports fault |
+| I04 | Duplicate/delayed command | Sequence/idempotency prevents surprise movement |
+| I05 | Phone disconnects during MANUAL | Motors stop after watchdog, even if STOP packet lost |
+| I06 | Telemetry temporarily disappears | UI shows stale data and blocks drive |
+| I07 | Pump unsupported or unapproved | Pump control hidden/disabled; relay OFF |
+| I08 | Camera unsupported | Camera card remains unavailable without crashing |
+| I09 | Physical master switch OFF | Motors and optional pump stop regardless of UI |
+| I10 | Restart firmware | Starts IDLE and pump OFF, no resumed movement |
 
-## What to record
-Date, operator, board model, software version/commit, test ID, pass/fail, serial excerpt (no private data), corrective action, adult-check signature for any optional wet stage. Never describe a test as passed if you did not run it.
-
-## Optional pump acceptance — adult only
-Power must be separate, motor driver suitable, flyback diode fitted, leaks excluded, cable insulation secured, water away from electronics, and emergency power-disconnect accessible. Firmware default remains pump-disabled until check is completed.
-
-## Exiting a failure
-Unplug the USB/power source before moving wiring. Record which test failed. Repeat dry testing before any pump stage.
+## Evidence ledger
+Record test date, commit, tester, environment, result, actual telemetry/ack trace, and pending issues. Do not mark hardware tests complete unless run on real confirmed hardware.

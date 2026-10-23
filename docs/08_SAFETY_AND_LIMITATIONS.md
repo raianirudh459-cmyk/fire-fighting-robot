@@ -1,35 +1,33 @@
-# 08 — Safety, honesty, and limitations
+# 08 — Safety, scope and ethical limitations
 
-## Non-negotiable event safety
-- No matches, candles, lighters, smoke, burning paper, heaters, or fire tests.
-- No mains voltage, homemade battery packs, or pumps wired directly to an Uno pin.
-- Keep drinks, water tank, tubing, and every wet surface separate from electronics.
-- Ask a teacher/adult to review the circuits and assist with cutting or any water-pump stage.
-- With power off, inspect the board and connections before moving/rewiring.
-- Use low-voltage, regulated supplies only; do not assume a USB port can power a motor.
-- Keep any wire ends insulated and strain-relieved.
-- Firmware starts with the optional pump drive disabled.
+**This is a school demonstration robot. Never take it to an active fire, burn anything to test it, create smoke/heat for sensors, or drive autonomously unattended.** It is not an emergency alarm or suppression system.
 
-## Claims that are NOT allowed
-- "Our model can stop an actual forest fire."
-- "The cheap flame sensor always detects every fire."
-- "The prototype is safe to leave unattended in a forest."
-- "The water-save cycle optimizes suppression" (without scientific measurement).
-- "The low-water button measures water level" (it only simulates the condition).
-- "Our model automatically protects animals" (it is a learning display).
+## Power and motion
+- Use only an appropriate **commercially assembled, protected** power supply reviewed by an adult/teacher; do not build lithium-ion packs, connect loose cells, improvise charging, or bypass protection.
+- Keep physical OFF switch reachable; unplug before rewiring. Motor driver current and heat dissipation need adult verification.
+- Keep rover on a low-speed indoor test surface and within an uncluttered contained arena.
+- Firmware must stop motors after manual-command timeout and on fault; STOP button on webpage cannot replace firmware and physical stop.
+- Do not enable autonomous movement until obstacle sensors and on-device failsafes are verified by Saksham in a controlled setup.
 
-## What the demonstration really proves
-- Arduino can read simple input signals and drive outputs.
-- A state machine can trigger a response after multiple conditions.
-- A low-water simulation can inhibit the displayed spray request.
-- A timing cycle can symbolize conservation and is easy to explain.
-- Reusable materials can be turned into an educational 3D model.
+## Pump and water
+- Pump and relay remain OFF until adult checks motor/relay ratings, waterproofing and safe separation of liquid from electronics.
+- Never test with water near exposed controller boards, battery connectors or USB sockets.
+- A visual LED/paper-nozzle demo fulfills the water-response storytelling goal without a working pump.
+- Do not instruct a student to aim water at fire or another person.
 
-## Practical limitations
-- Light-sensitive flame sensors have narrow detection conditions, interference and false alarms.
-- LM35 near ambient environment is not a long-range forest thermal sensor.
-- There is no outdoor enclosure, waterproof electronics, network failover, resilience certification, flow feedback, or accurate reservoir measurement.
-- A classroom model's water-saving intervals are illustrative, not fire suppression guidance.
+## Sensor limitations
+- DHT11 readings have limited resolution, update rate and accuracy.
+- MQ135 reacts to multiple gases; its raw ADC output is NOT a smoke concentration or air-quality index standard without calibration and interpretation.
+- Cheap IR and flame sensors are susceptible to interference/false readings.
+- Ultrasonic sensing may miss small, angled or soft obstacles.
+- Camera module model and support are currently unknown; do not assert a live stream exists before verified.
+- Signal strength and smartphone controls are not substitutes for certified safety hardware.
 
-## Ethical messaging
-Support wildfire prevention and trained emergency responders, not self-directed fire response. Explain responsibility toward wild animals, protected habitats, and forest ecosystems.
+## Cyber and privacy
+- Use a trusted local Wi-Fi network; no direct exposure to internet, public tunnel, or default open unauthenticated control port.
+- Avoid hard-coded secrets in web source or GitHub.
+- Do not record/upload camera footage or telemetry to third-party cloud services by default.
+- Server must validate commands and origin/authentication; never trust front-end role restrictions alone.
+
+## Honest claims
+Describe *simulation* as simulation. Show "unavailable" for missing fields, acknowledge uncalibrated readings, and never claim real firefighting capability.

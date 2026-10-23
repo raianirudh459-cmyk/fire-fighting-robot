@@ -1,34 +1,30 @@
-# 07 — Five-minute judge presentation script
+# 07 — Five-minute team presentation (you + Saksham)
 
-**Project:** VANARAKSHAK  
-**Slogan:** Detect Early. Spray Smart. Save Forests.  
-**Timing:** approximately 5 minutes; rehearse rather than reading at maximum speed.
+**Project:** VANARAKSHAK 2.0 — The Forest Fire Fighter Rover  
+**Slogan:** Detect Early. Respond Smart. Protect Forests.  
+**Rule:** Demonstrate indoors without flames, smoke or heating.
 
-### 0:00–0:35 — Opening
-"Good morning. My project is VANARAKSHAK, the Forest Fire Fighter. A forest is home to trees, insects, birds, and other animals. Wildfires can damage habitats and biodiversity, so early warnings are important. This is a miniature educational model, not a real emergency machine."
+## 0:00–0:40 — Opening (you)
+"Good morning. We're presenting VANARAKSHAK, a prototype forest-protection rover. Forest fires can affect wildlife and biodiversity. Our school model shows how a mobile robot, environmental sensors, and a remote dashboard could illustrate early observation. This is a classroom demonstration, not an actual firefighting robot."
 
-### 0:35–1:25 — Explain the materials
-"I built the forest with reused cardboard, paper, and a reclaimed bottle. The robot body is also made from reused material. This reduces waste and supports the idea of protecting forests not only through technology, but also through our everyday choices."
+## 0:40–1:35 — Hardware (Saksham)
+"Our rover uses four DC motors and two L298N drivers. Infrared and ultrasonic sensors represent obstacle awareness, flame modules represent possible fire warnings, and DHT11 and MQ135 provide environmental readings. Wi-Fi connects the rover to the dashboard. We use recycled materials to show the forest environment."
 
-### 1:25–2:15 — Technology
-"The brain is an Arduino Uno. A flame-sensor module and an LM35 temperature sensor represent two possible warning inputs. When just one warns us, the red LED and buzzer show caution. If both conditions remain active, the model goes into response mode. Real forest conditions are far more complicated, which is why this is just a school prototype."
+## 1:35–2:35 — Mobile dashboard (you)
+"Here is the interface I designed. It works on a phone as well as a laptop. It can show temperature in Celsius, humidity as a percentage, and the MQ135 gas sensor's relative response. It also shows connection status, warnings, driving mode, and a camera view when our camera hardware supports it. We clearly label simulated data when the physical robot isn't connected."
 
-### 2:15–3:20 — Live SAFE demonstration
-"Instead of creating any real fire, I press this DEMO button." **[Press once.]** "The red LED and buzzer activate. The nozzle moves. The blue LED represents spraying for three seconds followed by a seven-second pause. This teaches a water-saving response idea." **[Hold LOW WATER.]** "When the water tank is low, the software stops requesting spray. The warning remains active." **[Release.]**
+## 2:35–3:30 — Modes (Saksham; you operate the UI)
+"MANUAL means a person holds the direction buttons to drive the model in a controlled indoor arena. Releasing the button stops motion. AUTO means the robot tries to navigate around harmless obstacles using its sensors; we keep a STOP button ready. We do not run autonomous mode unattended."
 
-### 3:20–4:15 — Innovation, wildlife and biodiversity
-"My innovation is a low-water-aware, timed spray cycle plus a safe simulation mode. Here is the wildlife corridor: early warning could give people an opportunity to protect nearby habitats. This model demonstrates the idea; it cannot fight an actual wildfire."
+## 3:30–4:20 — Innovation + water (both)
+"Our innovations are a mobile dashboard, two driving modes, and environmental information in one place. We also designed an optional pump demonstration. Its water-related controls remain disabled until safe separation from the electronics has been checked, so we can explain it with a visual indicator instead."
 
-### 4:15–5:00 — Conclusion and questions
-"My slogan is: Detect Early. Spray Smart. Save Forests. My message is that technology, careful use of water, and reusing materials can work together to raise awareness about biodiversity protection. Thank you. I am ready for your questions."
+## 4:20–5:00 — Environmental message (both)
+"Reusing cardboard and other materials reduces waste. Early observation and responsible technology are important, but real wildfire emergencies must be handled by trained teams. VANARAKSHAK shows our ideas for protecting the forest. Our slogan is: Detect Early. Respond Smart. Protect Forests. Thank you."
 
-## Quick judge Q&A
-**Q: Why two sensors?** To teach sensor confirmation and reduce simple false alarms; neither the design nor its accuracy is certified.
-
-**Q: What is new about it?** Timed water-saving spray visualization and simulated low-tank protection, plus a safe demo button.
-
-**Q: Does it really fight a forest fire?** No. It is a classroom miniature model; real systems require professional engineering and wildfire professionals.
-
-**Q: Why is the pump off?** The safer default is to demonstrate it using a blue LED and moving nozzle. A teacher can supervise optional low-voltage water integration later.
-
-**Q: What would you improve next?** A tested water-level measurement, better environmental sensors, a display, and professionally validated monitoring.
+## Questions judges may ask
+- **Why a phone dashboard?** Portable, understandable remote controls and live presentation of readings.
+- **Why autonomous mode?** It demonstrates obstacle-aware navigation, not safe movement through real forests.
+- **What does the MQ135 measure?** A broad gas/air-quality response. Without rigorous calibration it doesn't output a trustworthy smoke concentration.
+- **How do you prevent loss-of-signal driving?** Firmware command timeout and hardware stop; the browser also requests STOP.
+- **Is this a real wildfire response system?** No. It is a supervised educational prototype.

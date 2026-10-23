@@ -1,40 +1,41 @@
-# 02 — Parts and reusable materials
+# 02 — Parts inventory, owners and materials
 
-Quantities are for one tabletop working demonstration. Buy or borrow only what you need; inspect exact part pinouts before wiring.
+**This list records what the team said it is using; it does not confirm exact specifications, tested compatibility, or purchases.**
 
-| Quantity | Part | Purpose | Essential? |
-|---:|---|---|---|
-| 1 | Arduino Uno R3 compatible board and USB cable | Controller and programming | Yes |
-| 1 | 3-pin or 4-pin IR flame sensor module with digital DO | Input demonstration | Yes |
-| 1 | LM35 temperature sensor | Analog temperature input | Yes |
-| 1 | SG90 5 V microservo and light plastic/paper nozzle | Turn a model sprinkler arm | Yes |
-| 1 | Low-current passive piezo buzzer | Beep alert | Yes |
-| 1 each | Green, red, and blue LEDs | Ready, alert, simulated spray | Yes |
-| 3 | 220-ohm LED resistors | LED current limiting | Yes |
-| 2 | Momentary push buttons | Safe fire demo, low-water simulation | Yes |
-| 1 | Breadboard or supervised solderless connection board | Safe rearrangeable circuit | Yes |
-| 1 set | Jumper wires, labels, tape | Connections and presentation | Yes |
-| 1 | USB power bank or USB port suitable for Uno | Main regulated 5 V | Yes |
-| 1 | Separate **regulated** 5 V servo supply, sufficient current | Keep servo currents off Uno regulator | Recommended |
-| 1 | Small 5 V DC pump and flexible tubing | Optional water-moving display | **Optional, adult supervised** |
-| 1 | Logic-level N-channel MOSFET rated for the pump current | Switch the optional pump | Optional |
-| 1 | Flyback diode suited to pump | Protect against motor switching spikes | Optional |
-| 1 | 10-kilohm resistor + 220-ohm gate resistor | Hold MOSFET off and protect gate drive | Optional |
-| 1 | Separate regulated 5 V pump supply | Avoid drawing pump current from Arduino | Optional |
+| Component | Planned qty | Purpose | Verification owner |
+|---|---:|---|---|
+| DC geared wheel motors | 4 | Four-wheel drive | Saksham |
+| L298N dual H-bridge module | 2 | Two motor channels per module | Saksham |
+| Wheel chassis + wheels/mounts | 1 set | Mechanical support | Both |
+| Relay module | 1 | Optional switched pump control | Saksham |
+| 5 V DC pump | 1 | Optional supervised water demo | Saksham + adult |
+| Compatible pump tubing | 1 set | Water path away from electronics | Both + adult |
+| Flame sensors | TBD | Simulated threat/indicator sensing | Saksham |
+| Infrared obstacle sensors | TBD | Close-obstacle awareness | Saksham |
+| Ultrasonic distance sensors | TBD | Distance/obstacle awareness | Saksham |
+| ESP8266 Wi-Fi board | 1 | Network bridge or controller | Saksham |
+| "ESP8266 Cam" | 1 claimed | Camera module; confirm actual model | Saksham |
+| DHT11 | 1 | Temperature °C and humidity %RH | Saksham |
+| MQ135 | 1 | Broad gas / air-quality response, not smoke-specific ppm | Saksham |
+| Switches and appropriate cables | TBD | Power and interface controls | Saksham |
+| Protected commercial lithium-ion power supply | TBD | Mobile power; exact rating must be professionally approved | Adult/teacher |
+| **Arduino Uno?** | Unknown | Earlier project used Uno; confirm whether retained for I/O | Saksham |
+| Smartphone/browser | 1 | User's controller and dashboard | You |
+| Recycled carton, paper, bottle, paint/signs | As found | Environmental 3D model | Both |
 
-## Reused model materials
-- Flat, rigid discarded carton, around 50 × 35 cm, for a base.
-- Waste cardboard rolls or rolled scrap paper for tree trunks.
-- Used green packaging/paper for leaves, layered canopy, and shrubs.
-- A clean reclaimed bottle to depict a water tank, kept away from electronics.
-- Waste paper for animal silhouettes, evacuation arrows, and signs.
-- Old packaging foam or folded cardboard as mounts; use nonconductive fixings.
-- Paper flags: FIRE ALERT, WATER SAVER, WILDLIFE SAFE ZONE.
+## What to record next
+For *each* electronic module, record exact manufacturer/model, rated operating voltage, logic voltage, connector description, power requirement, datasheet link, the working role, tested condition and responsible teammate. Avoid substituting internet images for board inspection.
 
-## Substitutions
-- If a sensor is unavailable, use the safe demo button to finish testing, but do not claim live detection is implemented until the sensor is actually fitted and verified.
-- If no separate servo power supply is available, ask a teacher to review current requirements; do not draw high servo/pump currents from the Uno.
-- If a 5 V pump is too difficult or messy, **the blue LED + moving nozzle is a complete, safer demonstration.**
+## Eco-friendly scenery
+Reuse large shipping cardboard for a display base, old packaging for tree silhouettes, scrap paper for habitat zones, and a cleaned bottle as a **closed decorative water-tank prop** until water integration has been inspected.
 
-## Purchasing caution
-No price is guaranteed. Record actual local costs and classify reused components as reused, borrowed components as borrowed. Do not copy online prices without dates.
+## Expense worksheet
+| Item | Reused / borrowed / new | Local cost (₹) | Verified? |
+|---|---|---:|---|
+| Motors and drivers |  |  |  |
+| Sensors |  |  |  |
+| Wi-Fi and camera |  |  |  |
+| Battery system |  |  |  |
+| Scenic materials |  |  |  |
+
+Record actual expenses only; no invented pricing.
