@@ -1,54 +1,29 @@
-# 13 — Responsive web dashboard design (your ownership)
+# 13 — Mobile web dashboard specification (confirmed stack)
 
-## Core goal
-A clean mobile-first dashboard for a low-speed educational 4WD rover. Support a realistic demo even when no robot is attached, but distinguish **SIMULATED** from **LIVE** visually and in text.
+## Confirmed technology
+- **HTML5** for semantic layout
+- **CSS3** for responsive mobile-first styling
+- **Vanilla browser JavaScript (ES6+)** for state, interactions and future local API access
+- **No Node.js / npm / React / TypeScript / Vite / bundler required**
+- Zero external frontend dependencies; open `web/index.html` from a desktop browser, or serve statically within a trusted LAN for mobile preview.
+- Logic tests: `web/tests.html`, run directly in a browser.
 
-## Proposed information architecture
-- **Overview:** connection, last update, temperature °C, humidity %RH, MQ135 raw/relative index, motion mode, alerts.
-- **Drive:** large forward/back/left/right press-and-hold controls, speed slider (actual firmware cap), high-priority STOP, mode switch.
-- **Autonomy:** indoor obstacle-avoidance status and stop controls; cannot claim safety unless hardware passed.
-- **Camera:** optional 16:9 viewer, verify hardware, no recording/cloud uploads, graceful unavailable state.
-- **System:** firmware version, API capability, sensor validity, connection retries/errors, version compatibility.
+## Files and responsibility
+`web/index.html` owns markup; `web/styles.css` owns responsive styling; `web/state.js` owns pure simulator state and fixtures; `web/app.js` owns DOM interaction, status, event log; `web/tests.js` checks state behavior.
 
-These can initially appear as one responsive page with grouped panels, expandable for future routing.
+## Existing UI
+- Sensor cards: DHT11 °C and %RH, MQ135 raw reading (uncalibrated; **not smoke ppm/AQI**), ultrasonic cm.
+- Flame and IR/ultrasonic obstacle status cards, source label and time since sample.
+- Visible **SIMULATOR ONLY** label and camera-not-configured state.
+- IDLE / MANUAL / AUTO demo modes, simulated hold-to-drive D-pad, Escape STOP and tap STOP.
+- Normal, obstacle, possible flame, missing-sensor and offline simulator scenarios.
+- Internal simulated event history.
 
-## Responsive layout
-| Screen | Layout |
-|---|---|
-| 320–389 px | Single-column readable cards, large tap targets, never horizontal-scroll |
-| 390–767 px | Single-column with a simple D-pad and reachable STOP |
-| 768–1199 px | Two columns for stats and controls; camera next to status |
-| >=1200 px | Flexible panel grid optimized for desktop |
+## Mobile acceptance
+Test 320px, 390px, 768px, 1280px viewport widths, portrait and landscape; check no sideways overflow, visible STOP and usable thumb controls, focus states, Esc/keyboard/pointer release, pointer cancel, loss of window focus, reduced motion, button disabled/error state. Browser-only logic tests do not replace manual rendering checks.
 
-Use semantic HTML, descriptive buttons and labels, keyboard focus, contrast, meaningful aria-live changes, touch-action handling, reduced-motion support. In landscape mode, keep STOP easily accessible.
+## Required future handoff from Saksham
+Exact controller and ESP8266/camera board, LAN API endpoints, response payload examples, capability flags, auth/origin constraints, command acknowledgment, firmware watchdog stop on command-loss, sensor sample timestamps/validity. Only after these are tested should the browser get a **separate opt-in LIVE adapter**. No automatic movement upon reconnect or replay of queued commands.
 
-## Card requirements
-**Temperature:** value in °C, last sample age, validity. **Humidity:** %RH. **MQ135:** "Gas / air-quality sensor (raw)" plus raw counts or relative baseline index. Do not call raw counts "smoke ppm" or "AQI"; these are scientifically different measurements. **Obstacle:** only real reported flags/distance. **Flame:** sensor state as a *possible warning*, not certain fire.
-
-## Controls and motion behavior
-Manual:
-- Show movement button active only while it is pressed.
-- Pointerdown sends start/refresh request only after manual mode acknowledged.
-- Pointerup, pointercancel, lost pointer capture, page hide and window blur send STOP.
-- Avoid accidental drag touch scroll; provide stop when held interaction ends.
-- Disable controls when connection stale, wrong mode, fault or command rejected.
-- Firmware must stop motors independently after missed heartbeat.
-
-AUTO:
-- Requires deliberate operator action; refuse if capability/sensor health unavailable.
-- Never auto-transition into motion after reconnect.
-- Show actual firmware navigation status and error.
-
-STOP:
-- Always prominent, usable with touch and keyboard.
-- Prioritized and safe to request even when other controls disabled.
-- On connection loss, show explicit "unable to confirm STOP" unless firmware ack exists; rely on hardware watchdog and physical switch.
-
-## Camera
-Treat this as optional until exact hardware verified. Use a static placeholder with model not configured. Future live feature must validate local stream address/capabilities, handle disconnected state, not auto-upload or record.
-
-## Visual concept
-Forest green accents, deep slate/white surfaces, clear dashboard hierarchy, red reserved for real stop/fault state, amber for unverified or stale. Avoid misleading flashing alarms in simulation.
-
-## Web preview
-`web/index.html` opens directly from disk and runs **only a mock controller**. All sensors/commands are simulated. This ensures your work can progress before Saksham's hardware integration.
+## Hosting
+A plain static server can host HTML/CSS/JS without Node. Opening a local computer `file://` page does not make it accessible from a phone; use a controlled local static server or an approved static host for preview. **Do not expose actual robot control publicly.**

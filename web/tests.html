@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VANARAKSHAK — Browser-only Logic Tests</title>
+  <style>
+    body{font:16px/1.5 system-ui,Arial,sans-serif;max-width:730px;padding:24px;margin:auto;background:#f0f6f1;color:#163d2b}
+    main{background:white;border-radius:16px;padding:24px}h1{font-size:25px}li{padding:7px;border-bottom:1px solid #e0e8e2}
+    .pass{color:#156c3f}.fail{color:#a21e2c}code{background:#edf1ef;padding:2px 5px;border-radius:4px}
+    a{color:#126847}
+  </style>
+  <script src="state.js" defer></script>
+  <script src="tests.js" defer></script>
+</head>
+<body><main><h1>VANARAKSHAK browser tests</h1><p>Runs entirely in the browser: <strong>no Node.js, npm or external test library</strong>. Verifies pure simulator state; not actual motors or firmware.</p><p id="result" role="status">Running…</p><ol id="cases"></ol><p><a href="index.html">Return to dashboard</a></p></main></body>
+</html>

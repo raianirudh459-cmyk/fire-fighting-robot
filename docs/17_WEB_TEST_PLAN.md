@@ -1,53 +1,36 @@
-# 17 — Frontend implementation and test specification
+# 17 — Dependency-free web testing plan
 
-## Primary user journeys
-1. Open `web/index.html` on a phone; identify that it is a simulation.
-2. Read environmental cards: DHT11 temperature/humidity and MQ135 raw sensor response.
-3. Switch to MANUAL simulator; hold direction, release to issue mock STOP.
-4. Move speed slider and see selected percentage without implying actual measured speed.
-5. Switch to AUTO simulator; see obstacle-avoidance storyline labeled mock.
-6. Press prominent STOP and see idle/stopped state.
-7. Observe a camera-unavailable placeholder instead of a fabricated live feed.
-8. Switch away from page while holding motion -> mock STOP, without reactivating automatically.
+## Setup (no Node.js)
+Open `web/index.html` for the simulator. Open `web/tests.html` for the no-install browser logic suite. It depends only on `state.js` and `tests.js`; no npm/React/Vite dependencies or network access.
 
-## Accessibility
-- [ ] Every button has discernible text/aria-label.
-- [ ] All controls are keyboard reachable and visible focus ring appears.
-- [ ] Disabled state communicates why the action is unavailable.
-- [ ] Live status updates have polite, low-noise announcements.
-- [ ] STOP remains visible and reachable at mobile widths.
-- [ ] Touch gestures do not accidentally scroll while holding a D-pad control.
-- [ ] Content still fits at 200% browser zoom.
-- [ ] Reduced motion preference suppresses decorative animations.
+## Pure logic coverage (browser assertions)
+- Boot in IDLE and STOPPED.
+- Reject movement in IDLE or AUTO.
+- Accept allowed directions in MANUAL.
+- Reject unknown direction.
+- STOP releases movement without leaving manual.
+- Emergency STOP can force IDLE.
+- Disconnect/fault resets motion and disables driving.
+- Returning from offline remains IDLE until explicitly rearmed.
+- Scenario change clears movement.
+- Simulated telemetry has source label, MQ135 uncalibrated.
+- No readings for offline/missing scenarios.
+- Missing values display as an em dash, never numeric zero.
+- Speed request clamped to limited simulated range.
+- Sample age logic produces reasonable seconds.
 
-## Responsive testing
-| Width | Manual check |
-|---:|---|
-| 320px | Single column, no horizontal overflow, D-pad tap targets usable |
-| 390px | Dashboard cards and control buttons readable in portrait |
-| 768px | Layout spreads without excess whitespace and preserves controls |
-| 1280px | Main cards, camera and controls fit a desktop command layout |
+## Manual browser testing required (NOT asserted complete)
+- 320, 390, 768, 1280px responsive; no horizontal overflow.
+- Mobile portrait/landscape thumb tap targets.
+- Pointerdown/held/release on D-pad, pointercancel, dragging away, browser blur, page hide and keyboard keyup.
+- Escape and both STOP buttons; STOP also during AUTO.
+- Accessible focus and labels; no annoying frequent screen-reader announcements.
+- Normal/obstacle/flame/missing/offline scenario displays.
+- Event log updates; last sample freshness.
+- Camera unavailable placeholder and pump-disabled status.
+- If enabling future LIVE mode: reject stale/unauthorized/replayed commands, independent on-device stop watchdog, API mode ack and manual real-hardware supervised tests.
 
-## Correctness and command safety test checklist
-- [ ] No real HTTP request or motor command from starter mock mode.
-- [ ] Clearly visible simulated badge before anyone can use controls.
-- [ ] Manual mode required before any directional control activates.
-- [ ] Pointerup and pointercancel each stop the direction.
-- [ ] Blur and visibilitychange stop simulated motion.
-- [ ] STOP is accessible while simulated AUTO is active.
-- [ ] Mode change first clears motion.
-- [ ] Camera placeholder is still readable offline.
-- [ ] Missing telemetry represented as unavailable, not zero.
-- [ ] After future live integration: stale state disables control and prevents auto-restart on reconnect.
-- [ ] After future live integration: rejected commands do not optimistically change acknowledged mode.
-
-## Integration fixtures
-Use the proposed JSON fixtures in docs/14, changing only when Saksham and you agree. Validate both happy path and invalid/null/missing-value cases. Collect actual screenshots and logs from tests; do not fabricate results.
-
-## Security checks before any live mode
-- [ ] Firmware authenticated/authorized local control on trusted LAN.
-- [ ] API rejects unsupported directions, excessive speed and inappropriate modes.
-- [ ] Browser does not contain secrets, passwords or tokens in source.
-- [ ] Camera stream is verified and kept private/local.
-- [ ] Connection loss triggers an on-device motor-stop watchdog.
-- [ ] Real relay/pump default remains OFF.
+## Team ownership
+You: DOM, usability, accessibility, test results.
+Saksham: motor and sensor firmware, API, hardware reliability, command-timeout motor stop and physical testing.
+Joint: accept live integration only after safety and network review.
