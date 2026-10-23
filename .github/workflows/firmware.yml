@@ -1,0 +1,17 @@
+name: Arduino UNO firmware and logic tests
+on:
+  push:
+  pull_request:
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Native logic tests
+        run: |
+          g++ -std=c++11 -Wall -Wextra -Werror test/fire_logic_test.cpp -o /tmp/forest-logic-test
+          /tmp/forest-logic-test
+      - name: Install PlatformIO
+        run: python -m pip install platformio
+      - name: Compile for Arduino Uno
+        run: pio run -e uno
