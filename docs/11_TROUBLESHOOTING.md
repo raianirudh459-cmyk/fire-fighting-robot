@@ -1,24 +1,21 @@
-# 11 — Troubleshooting FAQ
+# 11 — Web + robot troubleshooting
 
-| Symptom | Likely cause | Safe next step |
+| Symptom | Interpretation | Response |
 |---|---|---|
-| Uno is restarting when nozzle moves | Servo draws too much current from USB/board | Disconnect power; have adult check suitable external regulated servo supply/common ground |
-| Green LED never lights | Red/green LED polarity, wiring or code setup issue | Unplug and inspect resistors/anode/cathode against pin map |
-| Flame warning stuck | Flame module DO active level, reflections, or bright ambient light | Use Serial Monitor; verify specific module without flame or heat |
-| LM35 shows impossible temperature | Incorrect LM35 pinout, analog reference, bad GND | Disconnect power and compare package's datasheet; calibrate against room thermometer |
-| Demo toggles repeatedly | Button contacts wired incorrectly or loose | Check D3 -> switch -> GND and debounce; never connect D3 straight to 5V |
-| Buzzer silent | Active vs passive buzzer mismatch or reversed polarity | Check passive piezo compatibility, low-current rating and D6/GND |
-| Servo does not move | Supply, signal wiring, or mount binding | Unplug; remove heavy load; check external 5 V power and D9 signal |
-| Blue LED does not blink | Low-water button held, DEMO OFF, or LED reversed | Observe serial values, restart and press demo once |
-| Pump does not run | **Expected**: default firmware intentionally disables pump | Keep safe default; use blue LED. Optional stage requires adult electrical review |
-| PlatformIO build error | Missing PlatformIO toolchain or dependency | Check `platformio.ini`, installed packages, and GitHub Actions logs |
-| Unable to upload | Incorrect Uno board/serial port or bad USB cable | Select Uno and the appropriate port, follow official Arduino setup instructions |
+| Dashboard shows SIMULATED | Correct: preview mode uses fake telemetry | Do not claim live data; wait for signed firmware contract |
+| Dashboard shows OFFLINE | No verified network session or stale telemetry | Keep drive and mode commands disabled, inspect local Wi-Fi endpoint with Saksham |
+| Temperature or humidity shows dash | DHT11 value absent/invalid | Show unavailable; Saksham checks sensor and reporting |
+| MQ135 value seems strange | Warm-up, drift, cross-sensitivity, ADC/voltage issue | Show raw reading and calibration state; don't claim smoke ppm |
+| Video is blank | Camera unsupported or wrong module/URL, mixed-content/CORS issues | Show camera placeholder, confirm actual module and LAN transport |
+| Motor continues after release | Critical firmware safety failure | Use physical power OFF, stop driving tests; Saksham fixes on-device watchdog |
+| AUTO cannot be enabled | Correct if firmware lacks obstacle safety verification | Do not override it in browser |
+| Commands time out | Packet lost or firmware didn't acknowledge | Show error, request STOP, never replay motion automatically |
+| Red/green statuses disagree | UI may be showing desired rather than acknowledged state | Drive UI from acknowledged telemetry/response |
+| Battery status missing | No battery measurement integration | Display N/A, never invent percentage |
+| Pump button disabled | Correct initial safe state | Keep disabled; use simulated demonstration |
+| Current legacy Uno CI passes | It tests **old stationary sketch**, not the rover | Implement new verified firmware CI separately |
 
-## Debugging order
-1. Confirm code compiles.
-2. Confirm Serial Monitor speed 115200.
-3. Test with pump physically absent.
-4. Test READY and DEMO button modes.
-5. Check servo power under load.
-6. Calibrate both sensors under normal room conditions.
-7. Review all wiring with teacher before adding anything wet.
+## Debugging handoff
+You: capture timestamp, dashboard mode, endpoint/response status and sanitized console error (no Wi-Fi credentials).  
+Saksham: capture robot logs, command sequence, actual controller behavior and sensor validity.  
+Both: compare an agreed payload and log a reproducible issue; never continue moving a rover if stop behavior is uncertain.
